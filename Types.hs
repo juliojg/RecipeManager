@@ -1,8 +1,6 @@
 module Types where
 
 
-
-
 data IdIngr = IdIngr (String, Maybe ([Datos]))
 
 data Ingr = Ingr (IdIngr, Maybe Vencimiento, Cantidad) -- para las recetas vencimiento será Nothing 
@@ -29,5 +27,4 @@ data Cantidad = Cant Int
 
 data Conditions = Have Datos 
 
---
 

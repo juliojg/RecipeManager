@@ -22,3 +22,21 @@ data InterComm = Load String
                  | Display -- muestra inv
 
 
+{-
+"Queso, 2 kl, 01-01-2018 "
+
+IdQueso = IdIngr ("Queso", Nothing)
+
+IngrQueso = Ingr (IdQueso, "01-01-2018", 2)
+
+-
+
+"Pan, 1 kl, 01-01-2018, ch 200"
+
+IdPan = IdIngr ("Queso", [Carbohidratos 200])
+
+IngrPan = Ingr (IdPan, "01-01-2018", 2)
+
+
+-}
+
