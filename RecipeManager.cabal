@@ -1,0 +1,67 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: a6e85479d7ad0ccd63e91d60466719ac5b331f5e77d961144c623911c1bbcc51
+
+name:           RecipeManager
+version:        0.1.0.0
+synopsis:       Short description of your package
+description:    Please see the README on Github at <https://github.com/githubuser/RecipeManager#readme>
+homepage:       https://github.com/githubuser/RecipeManager#readme
+bug-reports:    https://github.com/githubuser/RecipeManager/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2017 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/RecipeManager
+
+library
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_RecipeManager
+  default-language: Haskell2010
+
+executable RecipeManager-exe
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      RecipeManager
+    , base >=4.7 && <5
+    , pretty
+    , dates
+  other-modules:
+      Paths_RecipeManager
+     , AST
+     , Types
+  default-language: Haskell2010
+
+test-suite RecipeManager-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      RecipeManager
+    , base >=4.7 && <5
+  other-modules:
+      Paths_RecipeManager
+  default-language: Haskell2010
