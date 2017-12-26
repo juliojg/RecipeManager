@@ -1,5 +1,6 @@
 module Types where
 
+import Data.Dates
 
 data IdIngr = IdIngr (String, Maybe ([Datos]))
 
@@ -21,10 +22,10 @@ data Tipo = Desayuno | Almuerzo | Merienda | Cena | Fria | Caliente
 
 data Datos = Calorias Double | Carbohidratos Double | Proteinas Double | Lipidos Double
 
-data Vencimiento = Vcm Int
+type Vencimiento = DateTime
 
-data Cantidad = Cant Int
+type Cantidad = Int
 
-data Conditions = Have Datos 
+data Conditions = Have [Datos] 
 
 
