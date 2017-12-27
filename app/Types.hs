@@ -63,7 +63,7 @@ data Cond = Cond [Datos]
 
 
 --el estado que llevará el programa
-data State = State { inv  :: [Ingr],
+data Env = Env { inv  :: [Ingr],
                      rcps :: [Receta]
                    }
 

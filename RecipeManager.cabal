@@ -51,6 +51,7 @@ executable RecipeManager
   other-modules:
       Paths_RecipeManager
      , Types
+     , Monads
   default-language: Haskell2010
 
 test-suite RecipeManager-test
