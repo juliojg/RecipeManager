@@ -1,6 +1,6 @@
 module Main where
 
-import AST
+import Types
 import System.Console.Readline
 
 
@@ -11,3 +11,10 @@ main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager"
           x <- readline prompt
           undefined
+
+
+
+
+
+
+--readevalprint :: Comm -> 
