@@ -14,14 +14,13 @@ data RMComm = Add_inv Ingr
             | IEat Comida --remove used ingredients
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [Ingr]
+            | NewInv String
 
-
-data Comm = Load String
-          | Save
+data Comm = Load String         
           | Close
           | Help
-          | Display -- muestra inv
-
+          | Display
+          | Save
 
 
 

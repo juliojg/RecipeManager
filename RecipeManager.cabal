@@ -48,10 +48,12 @@ executable RecipeManager
     , pretty
     , dates
     , readline
+    , ansi-terminal
   other-modules:
       Paths_RecipeManager
      , Types
      , Monads
+     , Parser
   default-language: Haskell2010
 
 test-suite RecipeManager-test
