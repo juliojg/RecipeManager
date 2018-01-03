@@ -13,7 +13,7 @@ prompt = "RM> "
 main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
           x <- readline prompt
-          handleRMComm (parseRMComm x)
+          undefined-- handleRMComm (parseRMComm x)
 
 
 

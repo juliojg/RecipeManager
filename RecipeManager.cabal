@@ -49,6 +49,7 @@ executable RecipeManager
     , dates
     , readline
     , ansi-terminal
+    , parsec
   other-modules:
       Paths_RecipeManager
      , Types
