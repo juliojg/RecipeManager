@@ -22,19 +22,51 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , commentEnd      = "*/"
                                   , commentLine     = "//"
                                   , opLetter        = char '='
-                                  , reservedOpNames = ["+","-","*","/","=","<",">","&","|","~"
-                                                      ,":=",";",":","?"]
-                                  , reservedNames   = ["true","false","skip","if",
-                                                       "then","else","end", "repeat","until",
-                                                       "add_rcp", "add_ing"]
+                                  , reservedOpNames = []
+                                  , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
+                                                        "check", "i_eat", "need_food", 
+                                                        "new_inv", "save", "load", "close", ":h", "display"]
                                   })
 
 
+ingParser :: Parser Ingr
+ingParser = do n <- identifier lis
+               symbol lis "," 
+               w <- natural lis
+               symbol lis ","
+               d <- parseV
+               undefined --return (Ingr ( (IdIngr (n, Nothing)) , ))
+
+
+parseV :: Parser Vencimiento
+parseV = do d <- natural lis
+            symbol lis "-"
+            m <- natural lis
+            symbol lis "-"
+            y <- natural lis
+            return (Vencimiento (day d, month m, year y)) 
 
 
 
+{-
+"Queso, 2 kl, 01-01-2018 "
+
+IdQueso = IdIngr ("Queso", Nothing)
+
+IngrQueso = Ingr (IdQueso, "01-01-2018", 2)
+-}
 
 
+{- data RMComm = Add_ing Ingr 
+            | Add_rcp Receta
+            | Rm (Ingr, Cantidad) -- ver como diferenciar ingredientes con vencimientos distintos             
+            | Rm_rcp Comida
+            | CheckV
+            | IEat Comida --remove used ingredients
+            | WhatToEat (Maybe Cond)
+            | WhatCanDoWith [Ingr]
+            | NewInv String
+-}
 
 
 

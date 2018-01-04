@@ -6,7 +6,7 @@ import Data.Dates
 
 --AST
 
-data RMComm = Add_inv Ingr 
+data RMComm = Add_ing Ingr 
             | Add_rcp Receta
             | Rm (Ingr, Cantidad) -- ver como diferenciar ingredientes con vencimientos distintos             
             | Rm_rcp Comida
@@ -53,7 +53,7 @@ data Tipo = Desayuno | Almuerzo | Merienda | Cena | Fria | Caliente
 
 data Datos = Calorias Double | Carbohidratos Double | Proteinas Double | Lipidos Double
 
-type Vencimiento = DateTime
+data Vencimiento = Vencimiento (DateTime, DateTime, DateTime)
 
 type Cantidad = Int
 
@@ -63,8 +63,8 @@ data Cond = Cond [Datos]
 
 --el estado que llevará el programa
 data Env = Env { inv  :: [Ingr],
-                     rcps :: [Receta]
-                   }
+                 rcps :: [Receta]
+               }
 
 
 
