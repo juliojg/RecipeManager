@@ -13,7 +13,7 @@ data RMComm = Add_ing Ingr
             | CheckV
             | IEat Comida --remove used ingredients
             | WhatToEat (Maybe Cond)
-            | WhatCanDoWith [Ingr]
+            | WhatCanDoWith [String]
             | NewInv String
 
 data Comm = Load String         
@@ -36,7 +36,7 @@ data Ingr = Ingr { id_ingr :: IdIngr,
 
 
 
---
+--ver como definir recetas y comidas ¿nombre?
 
 type Paso = String
 

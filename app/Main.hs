@@ -13,7 +13,7 @@ prompt = "RM> "
 main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
           x <- readline prompt
-          undefined-- handleRMComm (parseRMComm x)
+          undefined-- handleComm (parseRMComm x)
 
 
 
@@ -26,12 +26,12 @@ main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
 
 
 
-handleRMComm :: Comm -> IO ()
-handleRMComm Help       = showHelp
-handleRMComm (Load str) = undefined
-handleRMComm Save       = undefined
-handleRMComm Close      = undefined
-handleRMComm Display    = undefined
+handleComm :: Comm -> IO ()
+handleComm Help       = showHelp
+handleComm (Load str) = undefined
+handleComm Save       = undefined
+handleComm Close      = undefined
+handleComm Display    = undefined
 
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0

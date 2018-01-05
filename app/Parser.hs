@@ -57,12 +57,7 @@ parseV = optionMaybe ( do d <- natural lis --ver que pasa si consume algo de la 
 
 
 
---Parser add_ing
-add_ingP :: Parser RMComm
-add_ingP = do (reserved lis) "add_ingr" 
-              ing <- ingParser
-              return (Add_ing ing)
-
+--Parser comandos
 parseRMComm :: Parser RMComm
 parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- ingParser; return (Add_ing ing) })
               <|> try (do{ (reserved lis) "add_rcp"; undefined })
