@@ -5,7 +5,7 @@ import Text.Parsec.Token
 import Text.Parsec.Language (emptyDef)
 
 import Types
-
+import Data.Dates
 
 -----------------------
 -- Funcion para facilitar el testing del parser.
@@ -23,28 +23,66 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , commentLine     = "//"
                                   , opLetter        = char '='
                                   , reservedOpNames = []
-                                  , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
+                                  , reservedNames   = [ "add_ingr", "add_rcp", "rm_ing", "rm_rcp",
                                                         "check", "i_eat", "need_food", 
-                                                        "new_inv", "save", "load", "close", ":h", "display"]
+                                                        "new_inv", "save", "load", "close", "help", "display"]
                                   })
 
-
+-- Parser de ingredientes
 ingParser :: Parser Ingr
 ingParser = do n <- identifier lis
                symbol lis "," 
-               w <- natural lis
+               w <- natural lis -- (try?)
                symbol lis ","
-               d <- parseV
-               undefined --return (Ingr ( (IdIngr (n, Nothing)) , ))
+               v <- parseV     --(try?)
+               --parseDatos
+               return (makeIngr n (fromInteger w) v)
 
 
-parseV :: Parser Vencimiento
-parseV = do d <- natural lis
-            symbol lis "-"
-            m <- natural lis
-            symbol lis "-"
-            y <- natural lis
-            return (Vencimiento (day d, month m, year y)) 
+makeIngr :: String -> Cantidad -> Maybe Vencimiento -> Ingr
+makeIngr n c v = Ingr { id_ingr = IdIngr { ing_name = n, datos = Nothing},
+                               ven     = v,
+                               cant    = c
+                             } 
+--Parser de Fechas
+parseV :: Parser (Maybe Vencimiento)
+parseV = optionMaybe ( do d <- natural lis --ver que pasa si consume algo de la entrada
+                          symbol lis "-"
+                          m <- natural lis
+                          symbol lis "-"
+                          y <- natural lis
+                          return (DateTime (fromIntegral y) 
+                                           (fromIntegral m) 
+                                           (fromIntegral d) 0 0 0)) 
+
+
+
+--Parser add_ing
+add_ingP :: Parser RMComm
+add_ingP = do (reserved lis) "add_ingr" 
+              ing <- ingParser
+              return (Add_ing ing)
+
+parseRMComm :: Parser RMComm
+parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- ingParser; return (Add_ing ing) })
+              <|> try (do{ (reserved lis) "add_rcp"; undefined })
+              <|> try (do{ (reserved lis) "rm_ing"; undefined })
+              <|> try (do{ (reserved lis) "rm_rcp"; undefined })
+              <|> try (do{ (reserved lis) "check"; return CheckV })
+              <|> try (do{ (reserved lis) "i_eat"; undefined })
+              <|> try (do{ (reserved lis) "need_food"; undefined })
+              <|> try (do{ (reserved lis) "new_inv"; undefined })
+
+
+
+parseComm :: Parser Comm
+parseComm =       try (do{ (reserved lis) "save"; return Save })
+              <|> try (do{ (reserved lis) "load"; undefined })
+              <|> try (do{ (reserved lis) "close"; return Close })
+              <|> try (do{ (reserved lis) "help"; return Help })
+              <|> try (do{ (reserved lis) "display"; return Display })
+
+               
 
 
 

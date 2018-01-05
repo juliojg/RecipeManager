@@ -29,8 +29,10 @@ data IdIngr = IdIngr { ing_name :: String,
                        datos  :: Maybe [Datos]
                      }
 
-data Ingr = Ingr (IdIngr, Maybe Vencimiento, Cantidad) -- para las recetas vencimiento será Nothing
 
+data Ingr = Ingr { id_ingr :: IdIngr,
+                   ven    :: Maybe Vencimiento,
+                   cant   :: Cantidad}
 
 
 
@@ -53,7 +55,7 @@ data Tipo = Desayuno | Almuerzo | Merienda | Cena | Fria | Caliente
 
 data Datos = Calorias Double | Carbohidratos Double | Proteinas Double | Lipidos Double
 
-data Vencimiento = Vencimiento (DateTime, DateTime, DateTime)
+type Vencimiento = DateTime
 
 type Cantidad = Int
 
