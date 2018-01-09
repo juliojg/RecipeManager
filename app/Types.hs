@@ -40,7 +40,7 @@ data Ingr = Ingr { id_ingr :: IdIngr,
 
 type Paso = String
 
-data Receta = Rcp { ingredientes :: [Ingr], 
+data Receta = Rcp { ingredientes :: [Ingr],
                     pasos        :: [Paso]
                   }
 

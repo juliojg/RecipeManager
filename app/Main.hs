@@ -6,14 +6,22 @@ import System.Console.Readline
 import System.Console.ANSI (setCursorPosition, clearScreen)
 
 
+import Text.ParserCombinators.Parsec 
+import Text.Parsec.Token
+import Text.Parsec.Language (emptyDef)
+
 prompt :: String
 prompt = "RM> "
 
 
 main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
-          x <- readline prompt
-          undefined-- handleComm (parseRMComm x)
+          x <- readline prompt --lo de abajo fue para probar cosas
+          case x of Nothing -> undefined
+                    Just h  -> case parse parseRcp "" h of
+                                                     Left err -> undefined
+                                                     Right a -> a
+          undefined -- handleComm (parseRMComm x)
 
 
 

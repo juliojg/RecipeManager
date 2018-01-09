@@ -7,6 +7,10 @@ import Text.Parsec.Language (emptyDef)
 import Types
 import Data.Dates
 
+-- TO DO: verificar cosas con IO (en algun lado capaz queda algo IO (IO a), tiene sentido?)
+--        ver de empezar con la monada de estado 
+
+
 -----------------------
 -- Funcion para facilitar el testing del parser.
 totParser :: Parser a -> Parser a
@@ -34,9 +38,11 @@ parserIng = do n <- identifier lis
                symbol lis "," 
                w <- natural lis -- (try?)
                symbol lis ","
-               v <- parseV     --(try?)
-               --parseDatos
+               v <- parseV     --(try? si no ponemos nada va para armar receta, si si, para inventario)
+               --parseDatos    -- idem parseV   
                return (makeIngr n (fromInteger w) v)
+
+
 
 
 makeIngr :: String -> Cantidad -> Maybe Vencimiento -> Ingr
@@ -55,10 +61,56 @@ parseV = optionMaybe ( do d <- natural lis --ver que pasa si consume algo de la 
                                            (fromIntegral m) 
                                            (fromIntegral d) 0 0 0)) 
 
---Parser de recetas
---parserPaso :: Parser Paso
---parserPaso = do x <- 
 
+--Parser de recetas
+parseRcp :: Parser (IO Receta)
+parseRcp = do ( let ingrs = getIngrs
+                    pasos = getPasos
+                in return (makeRcp ingrs pasos))
+
+makeRcp :: IO [Ingr] -> IO [Paso] -> IO Receta
+makeRcp i p = do ingrs <- i
+                 pas <- p
+                 return (Rcp {ingredientes = ingrs, pasos = pas})
+                                      
+
+
+getIngrs :: IO [Ingr]
+getIngrs = do putStrLn "Ingrese los ingredientes necesarios para preparar la"
+              putStrLn "comida, separandolos con enters, al finalizar escriba :f"
+              x <- getLine
+              if x == ":f"              
+              then return []
+              else (let px = (parse parserIng "" x) in
+                       case px of 
+                                Left err -> undefined
+                                Right xx -> getIngrs' [xx]) 
+
+getIngrs' :: [Ingr] -> IO [Ingr]
+getIngrs' xs = do x <- getLine
+                  if x == ":f"
+                  then return xs
+                  else (let px = parse parserIng "" x in
+                           case px of 
+                                    Left err -> undefined
+                                    Right xx -> getIngrs' (xx : xs))
+                              
+
+getPasos :: IO [Paso]
+getPasos = do putStrLn "Ingrese en orden los pasos para preparar la comida,"
+              putStrLn "separandolos con enters, al finalizar escriba :f"
+              x <- getLine
+              if x == ":f" 
+              then return []     
+              else getPasos' [x]
+
+
+
+getPasos' :: [Paso] -> IO [Paso]
+getPasos' xs = do x <- getLine
+                  if x == ":f"
+                  then return xs
+                  else getPasos' (x:xs)
 
 
 
