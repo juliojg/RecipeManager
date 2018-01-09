@@ -29,8 +29,8 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   })
 
 -- Parser de ingredientes
-ingParser :: Parser Ingr
-ingParser = do n <- identifier lis
+parserIng :: Parser Ingr
+parserIng = do n <- identifier lis
                symbol lis "," 
                w <- natural lis -- (try?)
                symbol lis ","
@@ -44,7 +44,7 @@ makeIngr n c v = Ingr { id_ingr = IdIngr { ing_name = n, datos = Nothing},
                                ven     = v,
                                cant    = c
                              } 
---Parser de Fechas
+--Parser de fechas
 parseV :: Parser (Maybe Vencimiento)
 parseV = optionMaybe ( do d <- natural lis --ver que pasa si consume algo de la entrada
                           symbol lis "-"
@@ -55,11 +55,16 @@ parseV = optionMaybe ( do d <- natural lis --ver que pasa si consume algo de la 
                                            (fromIntegral m) 
                                            (fromIntegral d) 0 0 0)) 
 
+--Parser de recetas
+--parserPaso :: Parser Paso
+--parserPaso = do x <- 
+
+
 
 
 --Parser comandos
 parseRMComm :: Parser RMComm
-parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- ingParser; return (Add_ing ing) })
+parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (Add_ing ing) })
               <|> try (do{ (reserved lis) "add_rcp"; undefined })
               <|> try (do{ (reserved lis) "rm_ing"; undefined })
               <|> try (do{ (reserved lis) "rm_rcp"; undefined })

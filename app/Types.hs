@@ -46,12 +46,12 @@ data Receta = Rcp { ingredientes :: [Ingr],
 
 data Comida = Comida { food_name          :: String, 
                        receta          :: Receta, 
-                       caracteristicas :: [Tipo]
+                       caracteristicas :: [Tag]
                      }
 
 --
 
-data Tipo = Desayuno | Almuerzo | Merienda | Cena | Fria | Caliente 
+type Tag = String -- Desayuno / Fria / etc. 
 
 data Datos = Calorias Double | Carbohidratos Double | Proteinas Double | Lipidos Double
 
@@ -65,7 +65,8 @@ data Cond = Cond [Datos]
 
 --el estado que llevará el programa
 data Env = Env { inv  :: [Ingr],
-                 rcps :: [Receta]
+                 rcps :: [Receta],
+                 flag_saved :: Int 
                }
 
 
