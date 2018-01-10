@@ -17,10 +17,6 @@ prompt = "RM> "
 main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
           x <- readline prompt --lo de abajo fue para probar cosas
-          case x of Nothing -> undefined
-                    Just h  -> case parse parseRcp "" h of
-                                                     Left err -> undefined
-                                                     Right a -> a
           undefined -- handleComm (parseRMComm x)
 
 
@@ -33,7 +29,19 @@ main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
 
 
 
+{-
+handleRMComm :: RMComm -> IO ()
+handleRMComm (Add_Rcp rcp) = 
 
+
+handleAdd_Rcp :: IO ()
+handleAdd_Rcp = do putStrLn "Ingrese los ingredientes necesarios para preparar la"
+                   putStrLn "comida, separandolos con enters, al finalizar escriba :f"
+                   x <- getLine
+                   if x == ":f"
+                   then return ()
+                   else 
+-}
 handleComm :: Comm -> IO ()
 handleComm Help       = showHelp
 handleComm (Load str) = undefined

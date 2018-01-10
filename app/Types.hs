@@ -1,7 +1,7 @@
 module Types where
 
 import Data.Dates
-
+import Data.Char
 
 
 --AST
@@ -40,11 +40,40 @@ data Ingr = Ingr { id_ingr :: IdIngr,
 
 type Paso = String
 
-data Receta = Rcp { ingredientes :: [Ingr],
-                    pasos        :: [Paso]
+data Receta = Rcp { rcp_name :: String,
+                    ingredientes :: [Ingr],
+                    pasos        :: [Paso]  
                   }
 
-data Comida = Comida { food_name          :: String, 
+
+instance Show Ingr where
+ show = showIngr 
+
+showIngr :: Ingr -> String 
+showIngr i = (show (id_ingr i)) ++ (case (ven i) of Just a -> (show a) 
+                                                    Nothing -> []) ++ [chr (cant i)]
+
+
+
+
+
+instance Show Receta where
+ show = showRcp 
+
+
+showRcp :: Receta -> String
+showRcp r = (rcp_name r) ++ (concat (map (show) (ingredientes r))) ++ (concat (map (Prelude.show) (pasos r)))
+
+
+instance Show IdIngr where
+ show = showId 
+
+showId :: IdIngr -> String
+showId id = (ing_name id) ++ (case (datos id) of Just a -> undefined 
+                                                 Nothing -> [] ) 
+
+
+data Comida = Comida { food_name :: String,
                        receta          :: Receta, 
                        caracteristicas :: [Tag]
                      }
