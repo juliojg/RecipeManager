@@ -50,8 +50,8 @@ instance Show Ingr where
  show = showIngr 
 
 showIngr :: Ingr -> String 
-showIngr i = (show (id_ingr i)) ++ (case (ven i) of Just a -> (show a) 
-                                                    Nothing -> []) ++ [chr (cant i)]
+showIngr i = (show (id_ingr i)) ++ " " ++ (case (ven i) of Just a -> (show a) ++ " "
+                                                           Nothing -> []) ++ Prelude.show (cant i) ++ " "
 
 
 
@@ -62,7 +62,9 @@ instance Show Receta where
 
 
 showRcp :: Receta -> String
-showRcp r = (rcp_name r) ++ (concat (map (show) (ingredientes r))) ++ (concat (map (Prelude.show) (pasos r)))
+showRcp r = "Nombre: " ++ (rcp_name r) ++ "\n" ++ 
+            "Ingredientes: " ++ (concat (map ((++ ", ") . show) (ingredientes r))) ++ "\n" ++
+            "Pasos: " ++ (concat (map ((++ ", ") . Prelude.show) (pasos r)))
 
 
 instance Show IdIngr where

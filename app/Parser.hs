@@ -39,9 +39,8 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
 parserIng :: Parser Ingr
 parserIng = do n <- identifier lis
                symbol lis "-" 
-               w <- natural lis -- (try?)
-               symbol lis "-"
-               v <- parserV     --(try? si no ponemos nada va para armar receta, si si, para inventario)
+               w <- natural lis
+               v <- optionMaybe ( do {skipMany (symbol lis "-") ; parserV})
                --parseDatos    -- idem parseV
                return (makeIngr n (fromInteger w) v)
 
@@ -54,18 +53,17 @@ makeIngr n c v = Ingr { id_ingr = IdIngr { ing_name = n, datos = Nothing},
                                cant    = c
                              } 
 --Parser de fechas
-parserV :: Parser (Maybe Vencimiento)
-parserV = optionMaybe (do d <- natural lis --ver que pasa si consume algo de la entrada
-                          symbol lis "_"
-                          m <- natural lis
-                          symbol lis "_"
-                          y <- natural lis
-                          return (DateTime (fromIntegral y) 
-                                           (fromIntegral m) 
-                                           (fromIntegral d) 0 0 0)) 
+parserV :: Parser Vencimiento
+parserV = do d <- natural lis --ver que pasa si consume algo de la entrada
+             symbol lis "/"
+             m <- natural lis
+             symbol lis "/"
+             y <- natural lis
+             return (DateTime (fromIntegral y) 
+                              (fromIntegral m) 
+                              (fromIntegral d) 0 0 0) 
 
 -- add_rcp Pizza ... Harina - 200; Salsa - 50; Queso - 150 ... Abrir la salsa; Abrir el queso :f
-
 
 --Parser de recetas
 parserRcp :: Parser Receta
@@ -79,7 +77,7 @@ parserRcp = do name <- identifier lis
 parserEnd :: String -> Parser String
 parserEnd end = do {try spaces ; string end}
 
--- "Pizza...Harina-200-11_09_1998;Salsa-50-20_11_2018;Queso-150-19_09_1990...Abrir la salsa_Abrir el queso_:f"
+-- "Pizza...Harina-200-11_09_1998;Salsa-50-20/11/2018;Queso-150-19/09/1990...Abrir la salsa_Abrir el queso_:f"
 
 parserPaso :: Parser Paso
 parserPaso = manyTill (alphaNum <|> space) (string "_")  
@@ -149,8 +147,8 @@ getPasos' xs = do x <- getLine
 --Parser comandos
 parseRMComm :: Parser RMComm
 parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (Add_ing ing) })
-              <|> try (do{ (reserved lis) "add_rcp"; undefined  })
-              <|> try (do{ (reserved lis) "rm_ing"; undefined })
+              <|> try (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
+              <|> try (do{ (reserved lis) "rm_ing"; ing <- parserIng; c <- natural lis; return (Rm (ing, (fromIntegral c))) })
               <|> try (do{ (reserved lis) "rm_rcp"; undefined })
               <|> try (do{ (reserved lis) "check"; return CheckV })
               <|> try (do{ (reserved lis) "i_eat"; undefined })
