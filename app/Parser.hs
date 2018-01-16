@@ -8,9 +8,6 @@ import Text.Parsec.Char
 import Types
 import Data.Dates
 
--- TO DO: verificar cosas con IO (en algun lado capaz queda algo IO (IO a), tiene sentido?)
---        ver de empezar con la monada de estado 
-
 
 -----------------------
 -- Funcion para facilitar el testing del parser.
@@ -37,7 +34,8 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
 
 -- Parser de ingredientes
 parserIng :: Parser Ingr
-parserIng = do n <- identifier lis
+parserIng = do spaces
+               n <- identifier lis
                symbol lis "-" 
                w <- natural lis
                v <- optionMaybe ( do {skipMany (symbol lis "-") ; parserV})
@@ -70,79 +68,21 @@ parserRcp :: Parser Receta
 parserRcp = do name <- identifier lis
                string "..."
                spaces
-               ingrs <- manyTill (sepBy parserIng (string ";")) (parserEnd "...")
-               pasos <- manyTill (sepBy parserPaso (string ";")) (parserEnd ":f")
-               return (Rcp name (foldr (++) [] ingrs) (foldr (++) [] pasos)) 
+               ingrs <- manyTill (sepBy (try parserIng) (string ";")) (parserEnd "...")
+               spaces
+               pasos <- manyTill (parserPaso) (string ":f")
+               return (Rcp name (foldr (++) [] ingrs) (pasos)) 
                
 parserEnd :: String -> Parser String
-parserEnd end = do {try spaces ; string end}
+parserEnd end = do {spaces ; string end}
 
 -- "Pizza...Harina-200-11_09_1998;Salsa-50-20/11/2018;Queso-150-19/09/1990...Abrir la salsa_Abrir el queso_:f"
 
 parserPaso :: Parser Paso
-parserPaso = manyTill (alphaNum <|> space) (string "_")  
-
---que no sea necesaria la fecha
+parserPaso = do {spaces ; manyTill anyChar (try (string ";"))} 
 
 
 
-
-{-
---Parser de recetas
-parseRcp :: Parser (IO Receta)
-parseRcp = do ( let ingrs = getIngrs
-                    pasos = getPasos
-                in return (makeRcp ingrs pasos))
-
-
-
-
-
-makeRcp :: IO [Ingr] -> IO [Paso] -> IO Receta
-makeRcp i p = do ingrs <- i
-                 pas <- p
-                 return (Rcp {ingredientes = ingrs, pasos = pas})
-                                      
-
-
-getIngrs :: IO [Ingr]
-getIngrs = do putStrLn "Ingrese los ingredientes necesarios para preparar la"
-              putStrLn "comida, separandolos con enters, al finalizar escriba :f"
-              x <- getLine
-              if x == ":f"              
-              then return []
-              else (let px = (parse parserIng "" x) in
-                       case px of 
-                                Left err -> undefined
-                                Right xx -> getIngrs' [xx]) 
-
-getIngrs' :: [Ingr] -> IO [Ingr]
-getIngrs' xs = do x <- getLine
-                  if x == ":f"
-                  then return xs
-                  else (let px = parse parserIng "" x in
-                           case px of 
-                                    Left err -> undefined
-                                    Right xx -> getIngrs' (xx : xs))
-                              
-
-getPasos :: IO [Paso]
-getPasos = do putStrLn "Ingrese en orden los pasos para preparar la comida,"
-              putStrLn "separandolos con enters, al finalizar escriba :f"
-              x <- getLine
-              if x == ":f" 
-              then return []     
-              else getPasos' [x]
-
-
-
-getPasos' :: [Paso] -> IO [Paso]
-getPasos' xs = do x <- getLine
-                  if x == ":f"
-                  then return xs
-                  else getPasos' (x:xs)
-
--}
 
 --Parser comandos
 parseRMComm :: Parser RMComm
@@ -175,22 +115,6 @@ IdQueso = IdIngr ("Queso", Nothing)
 
 IngrQueso = Ingr (IdQueso, "01-01-2018", 2)
 -}
-
-
-{- data RMComm = Add_ing Ingr 
-            | Add_rcp Receta
-            | Rm (Ingr, Cantidad) -- ver como diferenciar ingredientes con vencimientos distintos             
-            | Rm_rcp Comida
-            | CheckV
-            | IEat Comida --remove used ingredients
-            | WhatToEat (Maybe Cond)
-            | WhatCanDoWith [Ingr]
-            | NewInv String
--}
-
-
-
-
 
   
 ----------------------------------
