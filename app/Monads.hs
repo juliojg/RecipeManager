@@ -5,10 +5,6 @@ import Control.Applicative
 import Control.Monad (liftM, ap)
 
 
---el estado que llevará el programa
---data State = State { inv  :: [Ingr],
---                     rcps :: [Receta]
---                   }
 data Error = Definirlos
 
 --instance Show Error where
@@ -30,29 +26,6 @@ instance Monad StateError where
                                        Right (v,s') -> runStateError (f v) s')  
 
 
-
---Clase para representar monadas con mis estados
-class Monad m => MonadFoodDB m where
---encontrar una comida preparable
-    whatToEat :: m [Comida] -- o todas las comidas preparables?
-    --lookfor = undefined
-    --agregar ingredientes al inventario
-    add_inv :: Ingr -> m ()
-    --add_inv = undefined
-    --agregar receta
-    add_rcp :: Receta -> m ()
-    --add_rcp = undefined
-
-instance MonadFoodDB StateError where
-    whatToEat = do s <- get
-                   return (whatToEat' (inv s) (rcps s))
-                   where whatToEat' _ [] = []
-                         whatToEat'[] _  = []
-                         whatToEat' (i : is) (r : rs) = undefined
-                  
-
-
-
 class Monad m => MonadState m where
     get :: m Env
     put :: Env -> m ()
@@ -60,6 +33,36 @@ class Monad m => MonadState m where
 instance MonadState StateError where --ver si son necesarios, considerando add_inv, etc.
     get = StateError (\s -> return (Right (s,s)))
     put s' = StateError (\s -> return (Right ((), s'))) 
+
+
+
+--Funciones auxiliares para tratar con estados data Env = Env{inv::[Ingr],rcps::[Receta],flag_saved :Int}
+whatToEat :: StateError [Receta]
+whatToEat = do s <- get
+               return (whatToEat' (inv s) (rcps s))
+               where whatToEat' _ [] = []
+                     whatToEat'[] _  = []
+                     whatToEat' i r = filter (preparable i) r
+
+
+preparable :: [Ingr] -> Receta -> Bool
+preparable inv r = undefined --check_if_have r inv 0   
+
+
+getIName :: Ingr -> String
+getIName = ing_name . id_ingr 
+
+check_if_have :: Ingr -> [Ingr] -> Int -> Bool 
+check_if_have r inv@(i:is) acc = if (ing_name . id_ingr . r == ing_name . id_ingr . i) && acc < cant r
+                                 then check_if_have r is (acc + cant i)
+                                 else undefined  
+
+
+addInv :: Ingr -> StateError ()
+addInv = undefined
+
+addRcp :: Receta -> StateError ()
+addRcp = undefined
 
 
 --Clase para representar monadas que lanzan errores 

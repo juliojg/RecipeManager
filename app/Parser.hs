@@ -71,7 +71,7 @@ parserRcp = do name <- identifier lis
                ingrs <- manyTill (sepBy (try parserIng) (string ";")) (parserEnd "...")
                spaces
                pasos <- manyTill (parserPaso) (string ":f")
-               return (Rcp name (foldr (++) [] ingrs) (pasos)) 
+               return (Rcp name (foldr (++) [] ingrs) (pasos) Nothing) --agregar tags 
                
 parserEnd :: String -> Parser String
 parserEnd end = do {spaces ; string end}
@@ -85,21 +85,21 @@ parserPaso = do {spaces ; manyTill anyChar (try (string ";"))}
 
 
 --Parser comandos
-parseRMComm :: Parser RMComm
+parseRMComm :: Parser RMComm --quitar tantos try
 parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (Add_ing ing) })
               <|> try (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
-              <|> try (do{ (reserved lis) "rm_ing"; ing <- parserIng; c <- natural lis; return (Rm (ing, (fromIntegral c))) })
-              <|> try (do{ (reserved lis) "rm_rcp"; undefined })
+              <|> try (do{ (reserved lis) "rm_ing"; ing <- parserIng; return (Rm (ing, cant ing)) })
+              <|> try (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (undefined) })
               <|> try (do{ (reserved lis) "check"; return CheckV })
-              <|> try (do{ (reserved lis) "i_eat"; undefined })
-              <|> try (do{ (reserved lis) "need_food"; undefined })
-              <|> try (do{ (reserved lis) "new_inv"; undefined })
-
+              <|> try (do{ (reserved lis) "i_eat"; food_name <- identifier lis; return undefined })
+              <|> try (do{ (reserved lis) "need_food"; return (WhatToEat (Nothing)) })
+              <|> try (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
+              <|> try (do{ (reserved lis) "what_with"; xs <- many1 (sepBy1 (identifier lis) (string ";")); return (WhatCanDoWith (foldr (++) [] xs)) })
 
 
 parseComm :: Parser Comm
 parseComm =       try (do{ (reserved lis) "save"; return Save })
-              <|> try (do{ (reserved lis) "load"; undefined })
+              <|> try (do{ (reserved lis) "load"; name <- identifier lis ; undefined })
               <|> try (do{ (reserved lis) "close"; return Close })
               <|> try (do{ (reserved lis) "help"; return Help })
               <|> try (do{ (reserved lis) "display"; return Display })

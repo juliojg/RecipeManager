@@ -16,16 +16,31 @@ prompt = "RM> "
 
 main :: IO ()
 main = do putStrLn "Bienvenido a RecipeManager (:h para ver la ayuda)"
-          x <- readline prompt --lo de abajo fue para probar cosas
-          undefined -- handleComm (parseRMComm x)
+          readevalprint
 
 
 
 
 
 
+readevalprint :: IO () -- el tipo deberia ser el de la monada que defini
+readevalprint = do line <- readline prompt
+                   case line of
+                    Nothing -> do putStrLn "\n Saliendo"; return ()
+                    Just xs -> case (parse (parseComm) "" xs) of
+                                Left er    -> do putStrLn "\n Mal ingresado" ;return ()
+                                Right comm -> do handleComm comm ; readevalprint   
 
---readevalprint :: Comm -> 
+
+
+handleComm :: Comm -> IO ()
+handleComm Help       = showHelp
+handleComm (Load str) = 
+handleComm Save       = undefined
+handleComm Close      = undefined
+handleComm Display    = undefined
+
+
 
 
 
@@ -42,12 +57,6 @@ handleAdd_Rcp = do putStrLn "Ingrese los ingredientes necesarios para preparar l
                    then return ()
                    else 
 -}
-handleComm :: Comm -> IO ()
-handleComm Help       = showHelp
-handleComm (Load str) = undefined
-handleComm Save       = undefined
-handleComm Close      = undefined
-handleComm Display    = undefined
 
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0
