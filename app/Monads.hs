@@ -42,24 +42,25 @@ whatToEat = do s <- get
                return (whatToEat' (inv s) (rcps s))
                where whatToEat' _ [] = []
                      whatToEat'[] _  = []
-                     whatToEat' i r = filter (preparable i) r
+                     whatToEat' i r = filter (preparable_with i) r
 
 
-preparable :: [Ingr] -> Receta -> Bool
-preparable inv r = undefined --check_if_have r inv 0   
+preparable_with :: [Ingr] -> Receta -> Bool
+preparable_with inv r = let needed = ingredientes r in
+                        foldr (&&) True (map (check_if_have_in inv) needed)
+ 
+
+check_if_have_in :: [Ingr] -> Ingr -> Bool 
+check_if_have_in (i:is) n = if (ing_name n /= ing_name i) 
+                            then check_if_have_in is n
+                            else (foldr (+) 0 (map snd (stock i)) >= snd (head (stock n))) --sumo lo disponible 
+                                                                
 
 
-getIName :: Ingr -> String
-getIName = ing_name . id_ingr 
-
-check_if_have :: Ingr -> [Ingr] -> Int -> Bool 
-check_if_have r inv@(i:is) acc = if (ing_name . id_ingr . r == ing_name . id_ingr . i) && acc < cant r
-                                 then check_if_have r is (acc + cant i)
-                                 else undefined  
-
-
+ 
 addInv :: Ingr -> StateError ()
-addInv = undefined
+addInv i = do s <- get
+              undefined
 
 addRcp :: Receta -> StateError ()
 addRcp = undefined

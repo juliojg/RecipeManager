@@ -22,16 +22,14 @@ data Comm = Load String
           | Display
           | Save
 
-data IdIngr = IdIngr { ing_name :: String, 
-                       datos  :: Maybe [Datos]
-                     }
+data Ingr = Ingr { ing_name :: String, 
+                   datos  :: Maybe [Datos],
+                   stock :: [(Maybe Vencimiento, Cantidad)]
+                 }
 
-
-data Ingr = Ingr { id_ingr :: IdIngr,
-                   ven    :: Maybe Vencimiento,
-                   cant   :: Cantidad}
 
 --ver como definir recetas y comidas ¿nombre?
+
 
 type Paso = String
 
@@ -85,9 +83,9 @@ IngrPan = Ingr (IdPan, "01-01-2018", 2)
 instance Show Ingr where
  show = showIngr 
 
-showIngr :: Ingr -> String 
-showIngr i = (show (id_ingr i)) ++ " " ++ (case (ven i) of Just a -> (show a) ++ " "
-                                                           Nothing -> []) ++ Prelude.show (cant i) ++ " "
+showStock :: (Maybe Vencimiento, Cantidad) -> String 
+showStock (v, c) = (case v of Just a -> (show a) ++ " "
+                              Nothing -> []) ++ Prelude.show c ++ " "
 
 
 
@@ -102,14 +100,11 @@ showRcp r = "Nombre: " ++ (rcp_name r) ++ "\n" ++
             "Ingredientes: " ++ (concat (map ((++ ", ") . show) (ingredientes r))) ++ "\n" ++
             "Pasos: " ++ (concat (map ((++ ", ") . Prelude.show) (pasos r)))
 
+ 
 
-instance Show IdIngr where
- show = showId 
-
-showId :: IdIngr -> String
-showId id = (ing_name id) ++ (case (datos id) of Just a -> undefined 
-                                                 Nothing -> [] ) 
-
-
+showIngr :: Ingr -> String
+showIngr i = (ing_name i) ++ (case (datos i) of Just a -> undefined 
+                                                Nothing -> [] ) 
+             ++ concat (map showStock (stock i))
 
 

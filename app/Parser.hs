@@ -43,13 +43,19 @@ parserIng = do spaces
                return (makeIngr n (fromInteger w) v)
 
 
+{-
+data Ingr = Ingr { ing_name :: String, 
+                   datos  :: Maybe [Datos]
+                   stock :: [(Maybe Vencimiento, Cantidad)]
+                 }
 
+-}
 
 makeIngr :: String -> Cantidad -> Maybe Vencimiento -> Ingr
-makeIngr n c v = Ingr { id_ingr = IdIngr { ing_name = n, datos = Nothing},
-                               ven     = v,
-                               cant    = c
-                             } 
+makeIngr n c v = Ingr { ing_name = n, 
+                        datos = Nothing,
+                        stock = [(v, c)]
+                      } 
 --Parser de fechas
 parserV :: Parser Vencimiento
 parserV = do d <- natural lis --ver que pasa si consume algo de la entrada
@@ -88,7 +94,7 @@ parserPaso = do {spaces ; manyTill anyChar (try (string ";"))}
 parseRMComm :: Parser RMComm --quitar tantos try
 parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (Add_ing ing) })
               <|> try (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
-              <|> try (do{ (reserved lis) "rm_ing"; ing <- parserIng; return (Rm (ing, cant ing)) })
+              <|> try (do{ (reserved lis) "rm_ing"; ing <- parserIng; undefined})--return (Rm (ing, cant ing)) })
               <|> try (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (undefined) })
               <|> try (do{ (reserved lis) "check"; return CheckV })
               <|> try (do{ (reserved lis) "i_eat"; food_name <- identifier lis; return undefined })

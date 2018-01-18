@@ -35,7 +35,7 @@ readevalprint = do line <- readline prompt
 
 handleComm :: Comm -> IO ()
 handleComm Help       = showHelp
-handleComm (Load str) = 
+handleComm (Load str) = undefined
 handleComm Save       = undefined
 handleComm Close      = undefined
 handleComm Display    = undefined
