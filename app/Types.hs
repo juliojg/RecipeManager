@@ -2,16 +2,16 @@ module Types where
 
 import Data.Dates
 import Data.Char
-
+import Data.Ord -- quitarlo
 
 --AST
 
 data RMComm = Add_ing Ingr 
             | Add_rcp Receta
-            | Rm (Ingr, Cantidad) -- ver como diferenciar ingredientes con vencimientos distintos             
+            | Rm (String, Cantidad)
             | Rm_rcp Receta
             | CheckV
-            | IEat Receta --remove used ingredients
+            | IEat Receta --remover ingredientes usados ?
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [String]
             | NewInv String

@@ -2,6 +2,7 @@ module Main where
 
 import Parser
 import Types
+import Monads
 import System.Console.Readline
 import System.Console.ANSI (setCursorPosition, clearScreen)
 
@@ -44,11 +45,12 @@ handleComm Display    = undefined
 
 
 
+
+handleRMComm :: RMComm -> StateError ()
+handleRMComm (Add_rcp rcp) = addRcp rcp
+handleRMComm (Add_ing ing) = addInv ing
+
 {-
-handleRMComm :: RMComm -> IO ()
-handleRMComm (Add_Rcp rcp) = 
-
-
 handleAdd_Rcp :: IO ()
 handleAdd_Rcp = do putStrLn "Ingrese los ingredientes necesarios para preparar la"
                    putStrLn "comida, separandolos con enters, al finalizar escriba :f"
