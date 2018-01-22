@@ -6,7 +6,7 @@ import Control.Monad (liftM, ap)
 import Data.List
 import Data.Ord
 
-data Error = RecetaExistente | IngrInexistente | IngrInsuficiente
+data Error = RecetaInexistente | RecetaExistente | IngrInexistente | IngrInsuficiente 
 
 instance Show Error where
     show RecetaExistente = "Nombre de receta existente."
@@ -43,12 +43,6 @@ instance MonadState StateError where --ver si son necesarios, considerando add_i
 --Ordena segun la fecha
 sortByV    :: [(Maybe Vencimiento, Cantidad)] -> [(Maybe Vencimiento, Cantidad)]
 sortByV xs = sortBy (comparing fst) xs 
-
-
-                                 
-
- 
-
 
 --Lista las comidas preparables con lo disponible
 whatToEat :: StateError [Receta]
@@ -137,10 +131,29 @@ checkStock ((v,c):xs) need = let n = c - need in
                              if n >= 0 
                              then (if (n > 0) then Right ((v, n) : xs) else Right xs )
                              else checkStock xs (- n) 
-  
+
+--Elimina una receta de la lista de recetas  
+rmRcp :: String -> StateError ()
+rmRcp name = do s <- get
+                let nr = filter (\r -> rcp_name r /= name) (rcps s) in
+                    if nr == rcps s 
+                    then throw RecetaInexistente
+                    else put (Env {inv = inv s, rcps = nr, flag_saved = flag_saved s}) 
 
 
+--Revisa vencimientos
+checkV :: Vencimiento -> StateError [Ingr]
+checkV hoy = do s <- get
+                return (filter (checkV1 hoy) (inv s))
 
+checkV1 :: Vencimiento -> Ingr -> Bool
+checkV1 hoy i = case stock i of
+                    []           -> True
+                    (mv, c):xs   -> case mv of 
+                                             Nothing -> True
+                                             Just v  -> (hoy > v)
+
+--[(Maybe Vencimiento, Cantidad)]
 
 
 --Clase para representar monadas que lanzan errores 

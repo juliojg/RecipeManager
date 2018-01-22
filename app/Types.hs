@@ -76,6 +76,12 @@ IngrPan = Ingr (IdPan, "01-01-2018", 2)
 
 -}
 
+--Eq
+
+instance Eq Receta where
+    r1 == r2 = (rcp_name r1 == rcp_name r2)
+
+
 -- Show
 
 

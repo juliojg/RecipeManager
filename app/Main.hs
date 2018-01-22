@@ -50,12 +50,13 @@ handleRMComm :: RMComm -> StateError ()
 handleRMComm (Add_rcp rcp) = addRcp rcp
 handleRMComm (Add_ing ing) = addInv ing
 handleRMComm (Rm (name,n)) = rmInv name n
-handleRMComm (Rm_rcp name) = undefined
-handleRMComm (CheckV) = undefined
+handleRMComm (Rm_rcp name) = rmRcp name
+handleRMComm (CheckV) = undefined -- hecha, ver tipos
 handleRMComm (IEat name) = undefined
-handleRMComm (WhatToEat Nothing) = undefined
+handleRMComm (WhatToEat Nothing) = -- hecha sin condiciones, ver tipos
 handleRMComm (WhatCanDoWith names) = undefined
 handleRMComm (NewInv name) = undefined
+
 {-
 handleAdd_Rcp :: IO ()
 handleAdd_Rcp = do putStrLn "Ingrese los ingredientes necesarios para preparar la"
