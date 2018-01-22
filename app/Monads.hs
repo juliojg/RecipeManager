@@ -6,7 +6,7 @@ import Control.Monad (liftM, ap)
 import Data.List
 import Data.Ord
 
-data Error = RecetaExistente
+data Error = RecetaExistente | IngrInexistente | IngrInsuficiente
 
 instance Show Error where
     show RecetaExistente = "Nombre de receta existente."
@@ -95,24 +95,51 @@ addRcp r = do s <- get
                          Right ok  -> put (Env {inv = inv s, rcps = ok, flag_saved = flag_saved s})
 
 
-checkExistence :: [Receta] -> Receta -> Bool
-checkExistence rcps n = case filter (\r -> rcp_name n == rcp_name r) rcps of
-                                                                           []     -> True
-                                                                           (x:xs) -> False
+checkExistenceR :: [Receta] -> Receta -> Bool
+checkExistenceR rcps n = case filter (\r -> rcp_name n == rcp_name r) rcps of
+                                                                            []     -> False
+                                                                            (x:xs) -> True
 
 searchAndPutR :: [Receta] -> Receta -> Either Error [Receta]
 searchAndPutR []     r = Right [r]
-searchAndPutR (x:xs) r = case checkExistence (x:xs) r of
-                                                       True  -> Left RecetaExistente
-                                                       False -> Right (r:x:xs)
+searchAndPutR (x:xs) r = case checkExistenceR (x:xs) r of
+                                                       False  -> Left RecetaExistente
+                                                       True -> Right (r:x:xs)
 
 --Elimina cierta cantidad de un ingrediente dado del inventario
 rmInv :: String -> Cantidad -> StateError ()
 rmInv i c = do s <- get
-               removeIngr i c (inv s)
+               case filter (\e -> ing_name e == i) (inv s) of
+                                                            [] -> throw IngrInexistente
+                                                            [x]  -> removeIngr i x c (inv s) s 
+                                                                    
 
-removeIngr :: String -> Cantidad -> [Ingr] -> StateError ()
-removeIngr name c (x:xs) = undefined 
+removeIngr :: String -> Ingr -> Cantidad -> [Ingr] -> Env -> StateError ()
+removeIngr name i c xs s = let a = stock i in 
+                           case checkStock a c of
+                                                Left err -> throw err
+                                                Right newstock -> put (Env {inv = replace name newstock xs,
+                                                                            rcps = rcps s, 
+                                                                            flag_saved = flag_saved s})
+
+replace :: String -> [(Maybe Vencimiento, Cantidad)] -> [Ingr] -> [Ingr]
+replace name ns []     = []
+replace name ns (x:xs) = if name == ing_name x 
+                         then (Ingr {ing_name = ing_name x, datos = datos x, stock = ns}) : xs
+                         else x : (replace name ns xs)
+
+
+
+checkStock :: [(Maybe Vencimiento, Cantidad)] -> Int -> Either Error [(Maybe Vencimiento, Cantidad)]
+checkStock a 0             = Right a
+checkStock [] need         = Left IngrInsuficiente
+checkStock ((v,c):xs) need = let n = c - need in
+                             if n >= 0 
+                             then (if (n > 0) then Right ((v, n) : xs) else Right xs )
+                             else checkStock xs (- n) 
+  
+
+
 
 
 

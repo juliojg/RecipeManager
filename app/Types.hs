@@ -9,9 +9,9 @@ import Data.Ord -- quitarlo
 data RMComm = Add_ing Ingr 
             | Add_rcp Receta
             | Rm (String, Cantidad)
-            | Rm_rcp Receta
+            | Rm_rcp String
             | CheckV
-            | IEat Receta --remover ingredientes usados ?
+            | IEat String --remover ingredientes usados ?
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [String]
             | NewInv String
