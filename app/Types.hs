@@ -15,6 +15,7 @@ data RMComm = Add_ing Ingr
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [String]
             | NewInv String
+            | RMHelp
 
 data Comm = Load String         
           | Close

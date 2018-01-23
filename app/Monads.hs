@@ -1,6 +1,8 @@
                                                                                                                                                                                                                                                         module Monads where
 
 import Types
+
+import Control.Monad.IO.Class
 import Control.Applicative
 import Control.Monad (liftM, ap)
 import Data.List
@@ -163,7 +165,9 @@ class Monad m => MonadError m where
 instance MonadError StateError where
     throw err = StateError (\s -> return (Left err))
 
-
+instance MonadIO StateError where
+    liftIO io = StateError (\s -> do x <- io
+                                     return (Right (x, s)))
 
 
 

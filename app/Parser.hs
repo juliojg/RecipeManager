@@ -101,7 +101,7 @@ parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (
               <|> try (do{ (reserved lis) "need_food"; return (WhatToEat (Nothing)) })
               <|> try (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
               <|> try (do{ (reserved lis) "what_with"; xs <- many1 (sepBy1 (identifier lis) (string ";")); return (WhatCanDoWith (foldr (++) [] xs)) })
-
+              <|> try (do{ (reserved lis) "help"; return RMHelp})
 
 parseComm :: Parser Comm
 parseComm =       try (do{ (reserved lis) "save"; return Save })
