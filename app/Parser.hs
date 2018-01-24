@@ -99,7 +99,6 @@ parseRMComm =     try (do{ (reserved lis) "add_ingr"; ing <- parserIng; return (
               <|> try (do{ (reserved lis) "check"; return CheckV })
               <|> try (do{ (reserved lis) "i_eat"; food_name <- identifier lis; return undefined })
               <|> try (do{ (reserved lis) "need_food"; return (WhatToEat (Nothing)) })
-              <|> try (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
               <|> try (do{ (reserved lis) "what_with"; xs <- many1 (sepBy1 (identifier lis) (string ";")); return (WhatCanDoWith (foldr (++) [] xs)) })
               <|> try (do{ (reserved lis) "help"; return RMHelp})
 
@@ -109,7 +108,7 @@ parseComm =       try (do{ (reserved lis) "save"; return Save })
               <|> try (do{ (reserved lis) "close"; return Close })
               <|> try (do{ (reserved lis) "help"; return Help })
               <|> try (do{ (reserved lis) "display"; return Display })
-
+              <|> try (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
                
 
 
@@ -150,78 +149,3 @@ nreservedOp = reservedOp lis
 
 parseOp :: String -> (a -> a -> a) -> Parser (a -> a -> a)
 parseOp s op = nreservedOp s >> return op
-{-
------------------------------------
--- Parser de expressiones enteras
------------------------------------
-
-intexp :: Parser IntExp
-intexp  = chainl1 intops addop
-
-intops :: Parser IntExp
-intops = chainl1 iatom mulop
-
-iatom :: Parser IntExp
-iatom =     try (do{ x <- nnatural ; return $ Const x })
-        <|> try (do{ v <- nidentifier ; return $ Var v })
-        <|> try (do{ nreservedOp "-" ; i <- intexp ; return $ UMinus i })
-        <|> try (nparens intexp)
-
-addop, mulop :: Parser (IntExp -> IntExp -> IntExp)
-addop =   (parseOp "+" Plus)  <|> (parseOp "-" Minus)
-mulop =   (parseOp "*" Times) <|> (parseOp "/" Div)
-
------------------------------------
--- Parser de expressiones booleanas
-------------------------------------
-
-boolexp :: Parser BoolExp
-boolexp = chainl1 andexp bitor
- 
-andexp :: Parser BoolExp
-andexp = chainl1 batom bitand 
-
-batom :: Parser BoolExp
-batom =     try (do{ nreserved "true" ; return BTrue })
-        <|> try (do{ nreserved "false" ; return BFalse })
-        <|> try (do{ nreservedOp "~" ; b <- boolexp ; 
-                     return (Not b) })
-        <|> try (nparens boolexp)
-        <|> try (do{ i1 <- intexp ; nreservedOp "=" ;
-                     i2 <- intexp ; return (Eq i1 i2) })
-        <|> try (do{ i1 <- intexp ; nreservedOp "<" ;
-                     i2 <- intexp ; return (Lt i1 i2) })
-        <|> try (do{ i1 <- intexp ; nreservedOp ">" ;
-                     i2 <- intexp ; return (Gt i1 i2) })
-
-bitor, bitand :: Parser (BoolExp -> BoolExp -> BoolExp)
-bitor = parseOp "|" Or
-bitand = parseOp "&" And
-
------------------------------------
--- Parser de comandos
------------------------------------
-
-comm :: Parser Comm
-comm = chainl1 catom seqop
-
-catom :: Parser Comm
-catom =   do{ nreserved "skip"; return Skip }
-      <|> try (do{ v <- nidentifier ; nreservedOp ":=" ;
-                   i <- intexp ; return (Let v i) })
-      <|> do{ nreserved "if"; b <- boolexp ;
-              nreserved "then" ; c1 <- comm ;
-              nreserved "else" ; c2 <- comm ;
-              nreserved "end" ; return (Cond b c1 c2) }
-      <|> do{ nreserved "repeat"; c <- comm ;
-              nreserved "until" ; b <- boolexp ;
-              return (Repeat c b) }
-
-seqop :: Parser (Comm -> Comm -> Comm)
-seqop = parseOp ";" Seq
-------------------------------------
--- Función de parseo
-------------------------------------
-parseComm :: SourceName -> String -> Either ParseError Comm
-parseComm = parse (totParser comm) 
--}

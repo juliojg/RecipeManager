@@ -168,6 +168,3 @@ instance MonadError StateError where
 instance MonadIO StateError where
     liftIO io = StateError (\s -> do x <- io
                                      return (Right (x, s)))
-
-
-

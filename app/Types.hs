@@ -14,7 +14,6 @@ data RMComm = Add_ing Ingr
             | IEat String --remover ingredientes usados ?
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [String]
-            | NewInv String
             | RMHelp
 
 data Comm = Load String         
@@ -22,6 +21,7 @@ data Comm = Load String
           | Help
           | Display
           | Save
+          | NewInv String
 
 data Ingr = Ingr { ing_name :: String, 
                    datos  :: Maybe [Datos],
