@@ -55,6 +55,8 @@ executable RecipeManager
      , Types
      , Monads
      , Parser
+     , Commands
+     , Pretty
   default-language: Haskell2010
 
 test-suite RecipeManager-test

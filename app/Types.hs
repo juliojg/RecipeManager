@@ -2,7 +2,7 @@ module Types where
 
 import Data.Dates
 import Data.Char
-import Data.Ord -- quitarlo
+
 
 --AST
 
@@ -11,25 +11,23 @@ data RMComm = Add_ing Ingr
             | Rm (String, Cantidad)
             | Rm_rcp String
             | CheckV
-            | IEat String --remover ingredientes usados ?
+            | IEat String
             | WhatToEat (Maybe Cond)
             | WhatCanDoWith [String]
             | RMHelp
+            | RMSave
+            | RMQuit
+            | Display
 
 data Comm = Load String         
           | Close
           | Help
-          | Display
-          | Save
           | NewInv String
 
 data Ingr = Ingr { ing_name :: String, 
-                   datos  :: Maybe [Datos],
+                   datos  :: Maybe Datos,
                    stock :: [(Maybe Vencimiento, Cantidad)]
                  }
-
-
---ver como definir recetas y comidas ¿nombre?
 
 
 type Paso = String
@@ -43,39 +41,26 @@ data Receta = Rcp { rcp_name :: String,
 
 type Tag = String -- Desayuno / Fria / etc. 
 
-data Datos = Calorias Double | Carbohidratos Double | Proteinas Double | Lipidos Double
+data Datos = Datos {calorias       :: Double,
+                    carbohidratos  :: Gramos,
+                    proteinas      :: Gramos,
+                    lipidos        :: Gramos}
 
 type Vencimiento = DateTime
 
 type Cantidad = Int
 
+type Gramos = Double
+
 data Cond = Cond [Datos] 
 
---el estado que llevará el programa
-data Env = Env { inv  :: [Ingr],
+--El estado que llevará el programa
+data Env = Env { file :: String,
+                 inv  :: [Ingr],
                  rcps :: [Receta],
                  flag_saved :: Int 
                }
 
-
-
-{-
-"Queso, 2 kl, 01-01-2018 "
-
-IdQueso = IdIngr ("Queso", Nothing)
-
-IngrQueso = Ingr (IdQueso, "01-01-2018", 2)
-
--
-
-"Pan, 1 kl, 01-01-2018, ch 200"
-
-IdPan = IdIngr ("Queso", [Carbohidratos 200])
-
-IngrPan = Ingr (IdPan, "01-01-2018", 2)
-
-
--}
 
 --Eq
 
@@ -91,8 +76,8 @@ instance Show Ingr where
  show = showIngr 
 
 showStock :: (Maybe Vencimiento, Cantidad) -> String 
-showStock (v, c) = (case v of Just a -> (show a) ++ " "
-                              Nothing -> []) ++ Prelude.show c ++ " "
+showStock (v, c) = case v of Just a  -> " Vence: " ++ (show a) ++ " Cantidad: " ++ Prelude.show c
+                             Nothing -> [] ++ Prelude.show c
 
 
 
@@ -112,6 +97,19 @@ showRcp r = "Nombre: " ++ (rcp_name r) ++ "\n" ++
 showIngr :: Ingr -> String
 showIngr i = (ing_name i) ++ (case (datos i) of Just a -> undefined 
                                                 Nothing -> [] ) 
-             ++ concat (map showStock (stock i))
+             ++ " " ++ concat (map showStock (stock i))
 
+
+
+instance Show Env where
+    show = showEnv
+
+
+showEnv :: Env -> String
+showEnv s = "Mostrando inventario: " ++ (file s) ++
+            "\nIngredientes: " ++
+             concat (map (('\n':) . show) (inv s)) ++
+            "\nRecetas: " ++
+             concat (map (('\n':) . show ) (rcps s))            
+                
 
