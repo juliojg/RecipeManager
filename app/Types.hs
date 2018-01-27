@@ -12,15 +12,15 @@ data RMComm = Add_ing Ingr
             | Rm_rcp String
             | CheckV
             | IEat String
-            | WhatToEat (Maybe Cond)
-            | WhatCanDoWith [String]
+            | WTE (Maybe Cond) --what to eat
+            | WCDW [String] -- what can do with
             | RMHelp
             | RMSave
-            | RMQuit
+            | RMClose
             | Display
 
 data Comm = Load String         
-          | Close
+          | Quit
           | Help
           | NewInv String
 
@@ -54,7 +54,7 @@ type Gramos = Double
 
 data Cond = Cond [Datos] 
 
---El estado que llevará el programa
+--El estado que llevara el programa
 data Env = Env { file :: String,
                  inv  :: [Ingr],
                  rcps :: [Receta],
@@ -99,6 +99,7 @@ showIngr i = (ing_name i) ++ (case (datos i) of Just a -> undefined
                                                 Nothing -> [] ) 
              ++ " " ++ concat (map showStock (stock i))
 
+--instance Show Vencimiento where
 
 
 instance Show Env where
