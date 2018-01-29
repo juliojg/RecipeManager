@@ -19,27 +19,25 @@ import Control.Monad (liftM, ap)
 import Data.List
 import Data.Ord
 
---data Env = Env{inv::[Ingr],rcps::[Receta],flag_saved :Int}
+
 
 loadRM :: String -> IO Env
 loadRM path = do file <- readFile ("app/save/" ++ path)
                  case parse parserEnv "" file of
-                    Left err  -> do putStrLn "Error de lectura"; return (Env "" [] [] 1)
+                    Left err  -> do putStrLn "Error de lectura"; return (Env "" [] [] [] []  1)
                     Right s   -> return s
 
 saveRM :: StateError ()
 saveRM = do s <- get 
             liftIO $ putStrLn ("Guardando archivo: " ++ (file s) ++ ".txt")            
             liftIO $ writeFile ("app/save/" ++ (file s) ++ ".txt") (render (printEnv s))
-            put (Env (file s) (inv s) (rcps s) 1)
+            put (Env (file s) (inv s) (rcps s) (table s) (tag_list s) 1)
 
 
---Ordena segun la fecha
-sortByV    :: [(Maybe Vencimiento, Cantidad)] -> [(Maybe Vencimiento, Cantidad)]
-sortByV xs = sortBy (comparing fst) xs 
 
 --Lista las comidas preparables con lo disponible
-whatToEat :: StateError [Receta]
+
+whatToEat :: StateError [Recipe]
 whatToEat = do s <- get
                return (whatToEat' (inv s) (rcps s))
                where whatToEat' _ [] = []
@@ -47,112 +45,93 @@ whatToEat = do s <- get
                      whatToEat' i r = filter (preparable_with i) r
 
 
-preparable_with :: [Ingr] -> Receta -> Bool
-preparable_with inv r = let needed = ingredientes r in
-                        foldr (&&) True (map (check_if_have_in inv) needed)
- 
+preparable_with :: [Ingr] -> Recipe -> Bool
+preparable_with inv r = foldr (&&) True (map (check_if_have_in inv) (ingrs r))
+
 --suma lo disponible en el inventario y se fija si alcanza para lo que pide la receta
 check_if_have_in :: [Ingr] -> Ingr -> Bool 
-check_if_have_in (i:is) n = if (ing_name n /= ing_name i) 
-                            then check_if_have_in is n
-                            else (foldr (+) 0 (map snd (stock i)) >= snd (head (stock n)))  
-                                                                
+check_if_have_in inv n = (foldr (+) 0 (map (\i -> if iname i == iname n then quantity i else 0) inv)) >= (quantity n)  
+            
 
 --Añade un ingrediente dado al inventario
 addInv :: Ingr -> StateError ()
 addInv i = do s <- get
-              put (Env {file = file s, inv = searchAndPutI (inv s) i, rcps = rcps s, flag_saved = 0})
+              put (Env (file s) (searchPlace i (inv s)) (rcps s) (table s) (tag_list s) 0)
 
 
---Verificar que ordena bien cada vez que se agrega
-searchAndPutI :: [Ingr] -> Ingr -> [Ingr]
-searchAndPutI []     i = [i]
-searchAndPutI (x:xs) i = if (ing_name x == ing_name i)
-                         then (Ingr {ing_name = ing_name x, 
-                                     datos = datos x, 
-                                     stock =  sortByV ((stock x) ++ (stock i))} : xs)
-                         else x : (searchAndPutI xs i)
-                           
+searchPlace :: Ingr -> [Ingr] -> [Ingr]
+searchPlace i []     = [i]
+searchPlace i (x:xs) = if (iname i == iname x)
+                       then (if expire i <= expire x 
+                             then (if expire i == expire x 
+                                   then (Ingr (iname i) (nutritional_values i) (quantity i + quantity x) (expire i)):xs 
+                                   else i:x:xs) 
+                             else x : (searchPlace' i xs))  
+                       else x : keepTrying
+                       where keepTrying = (searchPlace i xs)
+
+searchPlace' :: Ingr -> [Ingr] -> [Ingr]
+searchPlace' i [] = [i] 
+searchPlace' i (x:xs) = if (iname i == iname x)
+                        then (if expire i < expire x then i:x:xs else x : (searchPlace' i xs))  
+                        else (i:x:xs)
+                        
+
+                         
 --Añade una receta dada a la lista de recetas
-addRcp :: Receta -> StateError ()
+addRcp :: Recipe -> StateError ()
 addRcp r = do s <- get
               let t = searchAndPutR (rcps s) r in
                case t of 
                          Left  err -> throw err
-                         Right ok  -> put (Env {file = file s, inv = inv s, rcps = ok, flag_saved = 0})
+                         Right ok  -> put (Env (file s) (inv s) ok (table s) (tag_list s) 0)
 
 
-checkExistenceR :: [Receta] -> Receta -> Bool
-checkExistenceR rcps n = case filter (\r -> rcp_name n == rcp_name r) rcps of
-                                                                            []     -> False
-                                                                            (x:xs) -> True
-
-searchAndPutR :: [Receta] -> Receta -> Either Error [Receta]
+searchAndPutR :: [Recipe] -> Recipe -> Either Error [Recipe]
 searchAndPutR []     r = Right [r]
 searchAndPutR (x:xs) r = case checkExistenceR (x:xs) r of
                                                        False  -> Right (r:x:xs)
                                                        True   -> Left RecetaExistente
 
+checkExistenceR :: [Recipe] -> Recipe -> Bool
+checkExistenceR rcps n = case filter (\r -> rname n == rname r) rcps of
+                                                                      []     -> False
+                                                                      (x:xs) -> True
+
 --Elimina cierta cantidad de un ingrediente dado del inventario
-rmInv :: String -> Cantidad -> StateError ()
-rmInv i c = do s <- get
-               case filter (\e -> ing_name e == i) (inv s) of
-                                                            [] -> throw IngrInexistente
-                                                            [x]  -> removeIngr i x c (inv s) s 
-                                                                    
+rmInv :: String -> Grams -> StateError ()
+rmInv i q = do s <- get
+               case rmInv' i q (inv s) of
+                Left err -> throw err
+                Right l  -> put $ Env (file s) l (rcps s) (table s) (tag_list s) 0 
 
-removeIngr :: String -> Ingr -> Cantidad -> [Ingr] -> Env -> StateError ()
-removeIngr n i c xs s = let a = stock i in 
-                        case checkStock a c of
-                                             Left err -> throw err
-                                             Right [] -> put $ Env (file s) (deleteI n (inv s)) (rcps s) 0
-                                             Right newstock -> put $ Env (file s) (replace n newstock xs) (rcps s) 0
+--La lista ya tiene agrupados ingredientes
+rmInv' :: String -> Grams -> [Ingr] -> Either Error [Ingr]
+rmInv' name q []     = Left IngrInsuficiente
+rmInv' name q (x:xs) = if (iname x == name) 
+                       then (case compare (quantity x) q of
+                                                    LT -> rmInv' name (q - quantity x) xs 
+                                                    EQ -> Right xs
+                                                    GT -> Right $ Ingr name (nutritional_values x) (quantity x - q) (expire x) : xs)
+                       else either (Left) (\ns -> Right (x : ns)) (rmInv' name q xs)
 
-
-deleteI :: String -> [Ingr] -> [Ingr]
-deleteI n []     = []
-deleteI n (x:xs) = if ing_name x == n then xs else x : (deleteI n xs)
-
-replace :: String -> [(Maybe Vencimiento, Cantidad)] -> [Ingr] -> [Ingr]
-replace name ns []     = []
-replace name ns (x:xs) = if name == ing_name x 
-                         then (Ingr {ing_name = ing_name x, datos = datos x, stock = ns}) : xs
-                         else x : (replace name ns xs)
-
-
-
-checkStock :: [(Maybe Vencimiento, Cantidad)] -> Int -> Either Error [(Maybe Vencimiento, Cantidad)]
-checkStock a          0    = Right a
-checkStock []         need = Left IngrInsuficiente
-checkStock [(v,c)]    need = let n = c - need in
-                             if n >= 0 
-                             then (if (n > 0) then Right [(v, n)] else Right [] )
-                             else Left IngrInsuficiente 
-
-checkStock ((v,c):xs) need = let n = c - need in
-                             if n >= 0 
-                             then (if (n > 0) then Right ((v, n) : xs) else Right xs )
-                             else checkStock xs (- n) 
 
 --Elimina una receta de la lista de recetas  
 rmRcp :: String -> StateError ()
 rmRcp name = do s <- get
-                let nr = filter (\r -> rcp_name r /= name) (rcps s) in
+                let nr = filter (\r -> rname r /= name) (rcps s) in
                     if nr == rcps s 
                     then throw RecetaInexistente
-                    else put (Env {file = file s, inv = inv s, rcps = nr, flag_saved = 0}) 
+                    else put (Env (file s) (inv s) nr (table s) (tag_list s) 0) 
 
 
 --Revisa vencimientos
-checkV :: Vencimiento -> StateError [Ingr]
-checkV hoy = do s <- get
-                return (filter (checkV1 hoy) (inv s))
+checkE :: ExpireDate -> StateError [Ingr]
+checkE today = do s <- get
+                  return (filter (checkE' today) (inv s))
 
-checkV1 :: Vencimiento -> Ingr -> Bool
-checkV1 hoy i = case stock i of
-                    []           -> True
-                    (mv, c):xs   -> case mv of 
-                                             Nothing -> True
-                                             Just v  -> (hoy > v)
-
+checkE' :: ExpireDate -> Ingr -> Bool
+checkE' today i = case expire i of 
+                               Nothing -> True
+                               Just v  -> (today > v)
 

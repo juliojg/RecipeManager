@@ -49,7 +49,7 @@ handleComm Quit          = do putStrLn "Cerrando RecipeManger"; return ()
 handleComm (NewInv name) = do putStrLn ("Creado inventario: " ++ name)
                               putStrLn ("Ahora esta en el inventario: " ++ name )
                               putStrLn "Vea los comados de inventario con \"help\"" 
-                              void $ runStateError readevalprintRM (Env name [] [] 0)
+                              void $ runStateError readevalprintRM (Env name [] [] [] [] 0)
 
 
 readevalprintRM :: StateError ()
@@ -83,15 +83,15 @@ check_save = do liftIO $ putStrLn "¿Quiere guardar el inventario? y/n"
 handleRMComm :: RMComm -> StateError ()
 handleRMComm (RMSave)      = saveRM
 handleRMComm (Add_rcp rcp) = do addRcp rcp
-                                liftIO $ putStrLn ("Receta agregada: " ++ rcp_name rcp)
+                                liftIO $ putStrLn ("Receta agregada: " ++ rname rcp)
 handleRMComm (Add_ing ing) = do addInv ing
-                                liftIO $ putStrLn ("Ingrediente agregado: " ++ ing_name ing) 
+                                liftIO $ putStrLn ("Ingrediente agregado: " ++ iname ing) 
 handleRMComm (Rm (name,n)) = do rmInv name n
                                 liftIO $ putStrLn ("Eliminado " ++ show n ++ " de " ++ name)
 handleRMComm (Rm_rcp name) = do rmRcp name
                                 liftIO $ putStrLn ("Receta eliminada: " ++ name)
 handleRMComm (CheckV)      = do date <- liftIO getCurrentDateTime
-                                list <- checkV date
+                                list <- checkE date
                                 liftIO $ putStrLn ("Ingredientes vencidos: " ++ show list)
 handleRMComm (IEat name)   = undefined
 handleRMComm (WTE Nothing) = do list <- whatToEat

@@ -7,8 +7,8 @@ import Data.Char
 --AST
 
 data RMComm = Add_ing Ingr 
-            | Add_rcp Receta
-            | Rm (String, Cantidad)
+            | Add_rcp Recipe
+            | Rm (String, Grams)
             | Rm_rcp String
             | CheckV
             | IEat String
@@ -18,88 +18,87 @@ data RMComm = Add_ing Ingr
             | RMSave
             | RMClose
             | Display
+            | AddTable IngValues
 
 data Comm = Load String         
           | Quit
           | Help
           | NewInv String
 
-data Ingr = Ingr { ing_name :: String, 
-                   datos  :: Maybe Datos,
-                   stock :: [(Maybe Vencimiento, Cantidad)]
+data Ingr = Ingr { iname :: String, 
+                   nutritional_values :: Maybe NutritionalValues,
+                   quantity :: Grams,
+                   expire :: Maybe ExpireDate
                  }
 
 
-type Paso = String
+type Step = String
 
-data Receta = Rcp { rcp_name :: String,
-                    ingredientes :: [Ingr],
-                    pasos        :: [Paso],  
-                    caracteristicas :: Maybe [Tag]
+data Recipe = Rcp { rname :: String,
+                    ingrs :: [Ingr],
+                    steps :: [Step],  
+                    tags :: Maybe [Tag]
                   }
 
 
-type Tag = String -- Desayuno / Fria / etc. 
+type Tag = String --Desayuno / Fria / etc. 
 
-data Datos = Datos {calorias       :: Double,
-                    carbohidratos  :: Gramos,
-                    proteinas      :: Gramos,
-                    lipidos        :: Gramos}
+data NutritionalValues = NV {carb  :: Grams,
+                             prot  :: Grams,
+                             fats  :: Grams}
 
-type Vencimiento = DateTime
+data Calories = Carb Int | Prot Int | Fats Int
 
-type Cantidad = Int
 
-type Gramos = Double
+type ExpireDate = DateTime
 
-data Cond = Cond [Datos] 
+type Grams = Int
+
+data Cond = Cond [NutritionalValues] 
 
 --El estado que llevara el programa
-data Env = Env { file :: String,
-                 inv  :: [Ingr],
-                 rcps :: [Receta],
-                 flag_saved :: Int 
-               }
+data Env = Env {file  :: String,
+                inv   :: [Ingr],
+                rcps  :: [Recipe],
+                table :: [IngValues],
+                tag_list  :: [Tag], 
+                flag_saved :: Int}
+
+data IngValues = IV {table_name :: String,
+                     portion    :: Grams,
+                     values     :: NutritionalValues}
 
 
 --Eq
 
-instance Eq Receta where
-    r1 == r2 = (rcp_name r1 == rcp_name r2)
+instance Eq Recipe where
+    r1 == r2 = (rname r1 == rname r2)
 
 
 -- Show
 
-
-
 instance Show Ingr where
  show = showIngr 
 
-showStock :: (Maybe Vencimiento, Cantidad) -> String 
-showStock (v, c) = case v of Just a  -> " Vence: " ++ (show a) ++ " Cantidad: " ++ Prelude.show c
-                             Nothing -> [] ++ Prelude.show c
 
 
 
 
-
-instance Show Receta where
+instance Show Recipe where
  show = showRcp 
 
 
-showRcp :: Receta -> String
-showRcp r = "Nombre: " ++ (rcp_name r) ++ "\n" ++ 
-            "Ingredientes: " ++ (concat (map ((++ ", ") . show) (ingredientes r))) ++ "\n" ++
-            "Pasos: " ++ (concat (map ((++ ", ") . Prelude.show) (pasos r)))
+showRcp :: Recipe -> String
+showRcp r = "Nombre: " ++ (rname r) ++ "\n" ++ 
+            "Ingredientes: " ++ (concat (map ((++ ", ") . show) (ingrs r))) ++ "\n" ++
+            "Pasos: " ++ (concat (map ((++ ", ") . Prelude.show) (steps r)))
 
  
 
 showIngr :: Ingr -> String
-showIngr i = (ing_name i) ++ (case (datos i) of Just a -> undefined 
-                                                Nothing -> [] ) 
-             ++ " " ++ concat (map showStock (stock i))
+showIngr i = (iname i) ++ " " ++ (show (quantity i) ++ " " ++ (show (expire i)))
 
---instance Show Vencimiento where
+--instance Show ExpireDate where
 
 
 instance Show Env where

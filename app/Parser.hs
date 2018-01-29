@@ -6,7 +6,7 @@ import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Char
 import Text.PrettyPrint.HughesPJ (render)
 
-import Pretty
+--import Pretty
 import Types
 import Data.Dates
 
@@ -39,7 +39,7 @@ parserEnv = do name <- identifier lis
                ingrs <- sepEndBy (parserIng) (string "#")
                string "|Recetas:|"
                rcps  <- sepEndBy (parserRcp) (string "|")
-               return (Env name (ingrs) (rcps) 1)
+               return (Env name (ingrs) (rcps) [] [] 1)
 
 
 -- Parser de ingredientes
@@ -47,40 +47,64 @@ parserIng :: Parser Ingr
 parserIng = do n <- identifier lis
                symbol lis "-" 
                w <- natural lis
-               v <- optionMaybe parserV
-               --parseDatos    -- idem parseV
-               return (Ingr n Nothing [(v,(fromInteger w))])
+               e <- optionMaybe parserExpireDate
+               return (Ingr n Nothing (fromIntegral w) e )
+
+parserIngValues :: Parser IngValues
+parserIngValues = do n <- identifier lis
+                     spaces 
+                     p <- natural lis
+                     spaces
+                     v <- parserNV
+                     return (IV n (fromIntegral p) v )
+
+parserNV :: Parser NutritionalValues
+parserNV = do string "carb"
+              spaces
+              c <- natural lis
+              spaces
+              string "prot"
+              spaces
+              p <- natural lis
+              spaces
+              string "fats"
+              spaces
+              f <- natural lis
+              return (NV (fromIntegral c) (fromIntegral p) (fromIntegral f)) 
+ 
+
+
 
 
 --Parser de fechas
-parserV :: Parser Vencimiento
-parserV = do symbol lis "-"
-             d <- natural lis 
-             symbol lis "/"
-             m <- natural lis
-             symbol lis "/"
-             y <- natural lis
-             return (DateTime (fromIntegral y) 
-                              (fromIntegral m) 
-                              (fromIntegral d) 0 0 0) 
+parserExpireDate :: Parser ExpireDate
+parserExpireDate = do symbol lis "-"
+                      d <- natural lis 
+                      symbol lis "/"
+                      m <- natural lis
+                      symbol lis "/"
+                      y <- natural lis
+                      return (DateTime (fromIntegral y) 
+                                       (fromIntegral m) 
+                                       (fromIntegral d) 0 0 0) 
 
 
 --Parser de recetas
-parserRcp :: Parser Receta
+parserRcp :: Parser Recipe
 parserRcp = do name <- identifier lis
                string "..."
                spaces
                ingrs <- manyTill (sepBy1 parserIngRcp (string ";")) (parserEnd "...")
                spaces
-               pasos <- manyTill (parserPaso) (string ":f")
-               return (Rcp name (foldr (++) [] ingrs) (pasos) Nothing) --agregar tags 
+               steps <- manyTill (parserStep) (string ":f")
+               return (Rcp name (foldr (++) [] ingrs) (steps) Nothing) --agregar tags 
                
 parserEnd :: String -> Parser String
 parserEnd end = do {spaces ; string end}
 
 
-parserPaso :: Parser Paso
-parserPaso = do {spaces ; manyTill anyChar (try (string ";"))} 
+parserStep :: Parser Step
+parserStep = do {spaces ; manyTill anyChar (try (string ";"))} 
 
 
 parserIngRcp :: Parser Ingr
@@ -88,7 +112,7 @@ parserIngRcp = do spaces
                   n <- identifier lis
                   symbol lis "-" 
                   w <- natural lis
-                  return (Ingr n Nothing [(Nothing,(fromInteger w))])
+                  return (Ingr n Nothing (fromIntegral w) Nothing)
 
 
 
