@@ -74,10 +74,9 @@ printRcp r = text (rname r) <>
              printList ";" (ingrs r) printIngr <>
              text "..." <>
              printList ";" (steps r) (\p -> text p) <>
-             text ";" <>
-             maybe (empty) (\xs -> (text "..." <> (printList ";"  xs (\a-> text a)) <> text ";")) (tags r) <>
-             text ":f"
-         
+             text ";:f" <>
+             maybe empty (\xs -> ((printList ";"  xs (\a-> text a)) <> text ":ff")) (tags r) 
+             
 
 
 

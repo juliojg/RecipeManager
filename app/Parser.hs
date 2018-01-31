@@ -30,7 +30,7 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
                                                         "check", "i_eat", "need_food", 
                                                         "new_inv", "save", "load", "close", "help", "display", "quit",
-                                                        "add_t", "rm_t"]
+                                                        "add_t", "rm_t", "add_tag"]
                                   })
 
 --Parser de archivos guardados
@@ -103,15 +103,22 @@ parserRcp = do name <- identifier lis
                spaces
                ingrs <- manyTill (sepBy1 parserIngRcp (string ";")) (parserEnd "...")
                spaces
-               steps <- manyTill (parserStep) (string ":f")
-               return (Rcp name (foldr (++) [] ingrs) (steps) Nothing) --agregar tags 
-               
+               steps <- manyTill parserStep (string ":f")
+               spaces
+               ts    <- optionMaybe (manyTill parserTag (string ":ff"))
+               return (Rcp name (foldr (++) [] ingrs) (steps) ts)  
+
+
 parserEnd :: String -> Parser String
 parserEnd end = do {spaces ; string end}
 
 
 parserStep :: Parser Step
 parserStep = do {spaces ; manyTill anyChar (try (string ";"))} 
+
+
+parserTag :: Parser Tag
+parserTag = do {spaces ; manyTill anyChar (try (string ";"))} 
 
 
 parserIngRcp :: Parser Ingr
@@ -141,22 +148,10 @@ parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (
               <|> (do{ (reserved lis) "display"; return Display })
               <|> (do{ (reserved lis) "add_t"; spaces; iv <- parserIngValues; return (AddTable iv)})
               <|> (do{ (reserved lis) "rm_t"; n <- identifier lis; return (RmTable n)})
-
+              <|> (do{ (reserved lis) "add_tag"; n <- identifier lis; return (AddTag n)})
 
 parseComm :: Parser Comm
-parseComm =       try (do{ (reserved lis) "load"; name <- identifier lis; string ".txt"; return (Load (name ++ ".txt")) })
+parseComm =       try (do{ (reserved lis) "load"; name <- identifier lis; string ".rcpm"; return (Load (name ++ ".rcpm")) })
               <|> (do{ (reserved lis) "quit"; return Quit })
               <|> (do{ (reserved lis) "help"; return Help })
               <|> (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
-               
-
-
-
-{-
-"Queso, 2 kl, 01-01-2018 "
-
-IdQueso = IdIngr ("Queso", Nothing)
-
-IngrQueso = Ingr (IdQueso, "01-01-2018", 2)
--}
-

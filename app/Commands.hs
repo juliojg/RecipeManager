@@ -34,8 +34,8 @@ loadRM path = do file <- readFile ("save/" ++ path)
 saveRM :: StateError ()
 saveRM = do s <- get 
             liftIO $ createDirectoryIfMissing False "save"
-            liftIO $ putStrLn ("Guardando archivo: " ++ (file s) ++ ".txt")             
-            liftIO $ writeFile ("save/" ++ (file s) ++ ".txt") (render (printEnv s))
+            liftIO $ writeFile ("save/" ++ (file s) ++ ".rcpm") (render (printEnv s))
+            liftIO $ putStrLn ("Guardado archivo: " ++ (file s) ++ ".rcpm")             
             put (Env (file s) (inv s) (rcps s) (table s) (tag_list s) 1)
 
 
@@ -158,6 +158,7 @@ addTable :: IngValues -> StateError ()
 addTable iv = do s <- get
                  put (Env (file s) (inv s) (rcps s) (verifyPlace iv (table s)) (tag_list s) 0 )
                  liftIO $ putStrLn ("Datos de ingrediente " ++ show (tname iv) ++ " agregados")
+
 verifyPlace :: IngValues -> [IngValues] -> [IngValues]
 verifyPlace iv []     = [iv]
 verifyPlace iv (x:xs) = if (tname x == tname iv)
@@ -177,6 +178,15 @@ rmTable' name [] = Left IngrInexistente
 rmTable' name (x:xs) = if (tname x == name)
                        then Right xs
                        else either (Left) (\ns -> Right (x : ns)) (rmTable' name xs)
+
+
+--Añade un tag a la lista de tags
+addTag :: Tag -> StateError ()
+addTag t = do s <- get
+              if elem t (tag_list s)
+              then liftIO $ putStrLn "El tag ya esta en la lista"
+              else put   (Env (file s) (inv s) (rcps s) (table s) (t : (tag_list s)) 0 )
+                 
 
 
 --Obtiene los valores nutricionales de un ingr en base a la tabla
@@ -202,11 +212,19 @@ getCalories :: NutritionalValues -> KiloCalorie
 getCalories nv = (carb nv) * 4.0 + (prot nv) * 4.0 + (fats nv) * 9.0
 
 
+getRcpNV :: Recipe -> StateError (Either Error NutritionalValues)
+getRcpNV r = do s <- get
+                case foldr (sumNV ) (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
+                   Left err -> throw IngrInexistente
+                   Right nv -> return (Right nv)      
+                    
 
+accNV :: NutritionalValues
+accNV = NV 0 0 0 
 
-
-
-
-
-
-
+sumNV :: Either Error NutritionalValues -> Either Error NutritionalValues -> Either Error NutritionalValues
+sumNV n1 n2 = case n1 of 
+                Left err -> Left err
+                Right a1 -> case n2 of 
+                              Left err -> Left err
+                              Right a2 -> Right (NV (carb a1 + carb a2) (prot a1 + prot a2) (fats a1 + fats a2) )

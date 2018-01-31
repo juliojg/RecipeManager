@@ -20,7 +20,7 @@ data RMComm = Add_ing Ingr
             | Display
             | AddTable IngValues
             | RmTable String
-             
+            | AddTag String             
 
 
 data Comm = Load String         
@@ -44,7 +44,7 @@ data IngValues = IV {tname   :: String,
 data Recipe = Rcp { rname :: String,
                     ingrs :: [Ingr],
                     steps :: [Step],  
-                    tags :: Maybe [Tag]
+                    tags  :: Maybe [Tag]
                   }
 
 type Tag = String --Desayuno / Fria / etc. 

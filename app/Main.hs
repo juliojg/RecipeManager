@@ -25,7 +25,7 @@ prompt = "RM> "
 main :: IO ()
 main = do setCursorPosition 0 0
           clearScreen
-          putStrLn "Bienvenido a RecipeManager (escriba \"help\" para ver la ayuda)"
+          putStrLn "Bienvenido a RecipeManager, cargue o cree un inventario (escriba \"help\" para ver la ayuda)"
           readevalprint
 
 readevalprint :: IO ()
@@ -47,8 +47,8 @@ handleComm (Load str)    = do res <-loadRM str
                                         Right s -> void $ runStateError readevalprintRM s
 handleComm Quit          = do putStrLn "Cerrando RecipeManger"; return () 
 handleComm (NewInv name) = do putStrLn ("Creado inventario: " ++ name)
-                              putStrLn ("Ahora esta en el inventario: " ++ name )
-                              putStrLn "Vea los comados de inventario con \"help\"" 
+                              putStrLn ("Ahora esta en el inventario: " ++ name ++ 
+                                        ", Vea los comados de inventario con \"help\"") 
                               void $ runStateError readevalprintRM (Env name [] [] [] [] 0)
 
 
@@ -108,7 +108,7 @@ showHelp = do setCursorPosition 0 0
               clearScreen
               putStrLn "Lista de comandos disponibles:"
               putStrLn "new_inv [nombre_de_inventario] : Crear inventario"
-              putStrLn "load [nombre_de_archivo]       : Cargar un inventario"
+              putStrLn "load [nombre_de_archivo].rcpm  : Cargar un inventario"
               putStrLn "quit                           : Cerrar RecipeManager"
               putStrLn "help                           : Mostrar ayuda" 
 
