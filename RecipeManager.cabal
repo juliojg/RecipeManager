@@ -50,6 +50,7 @@ executable RecipeManager
     , readline
     , ansi-terminal
     , parsec
+    , directory
   other-modules:
       Paths_RecipeManager
      , Types

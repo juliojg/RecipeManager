@@ -6,7 +6,7 @@ import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Char
 import Text.PrettyPrint.HughesPJ (render)
 
---import Pretty
+import Pretty
 import Types
 import Data.Dates
 
@@ -29,48 +29,55 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , reservedOpNames = []
                                   , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
                                                         "check", "i_eat", "need_food", 
-                                                        "new_inv", "save", "load", "close", "help", "display", "quit"]
+                                                        "new_inv", "save", "load", "close", "help", "display", "quit",
+                                                        "add_t", "rm_t"]
                                   })
 
 --Parser de archivos guardados
 parserEnv :: Parser Env
 parserEnv = do name <- identifier lis
                string "|Ingredientes:|"
-               ingrs <- sepEndBy (parserIng) (string "#")
+               ingrs <- sepEndBy (parserAddedIng) (string "#")
                string "|Recetas:|"
-               rcps  <- sepEndBy (parserRcp) (string "|")
-               return (Env name (ingrs) (rcps) [] [] 1)
+               rcps  <- sepEndBy (parserRcp) (string "%")
+               string "|Tabla:|"
+               t     <- sepEndBy (parserIngValues) (string "|")
+               return (Env name ingrs rcps t [] 1)
+
+
+parserAddedIng :: Parser Ingr
+parserAddedIng = do n  <- identifier lis
+                    symbol lis "-" 
+                    w  <- parserGrams
+                    symbol lis "-"            
+                    nv <- parserNV
+                    e  <- parserExpireDate                    
+                    return (Ingr n (Just nv) w (Just e) )
 
 
 -- Parser de ingredientes
 parserIng :: Parser Ingr
 parserIng = do n <- identifier lis
                symbol lis "-" 
-               w <- natural lis
-               e <- optionMaybe parserExpireDate
-               return (Ingr n Nothing (fromIntegral w) e )
+               w <- parserGrams
+               e <- parserExpireDate
+               return (Ingr n Nothing w (Just e) )
 
 parserIngValues :: Parser IngValues
 parserIngValues = do n <- identifier lis
-                     spaces 
-                     p <- natural lis
-                     spaces
+                     string "-" 
+                     p <- parserGrams
+                     string "-"
                      v <- parserNV
-                     return (IV n (fromIntegral p) v )
+                     return (IV n p v )
 
-parserNV :: Parser NutritionalValues
-parserNV = do string "carb"
+parserNV :: Parser NutritionalValues -- carb prot fats, en ese orden
+parserNV = do c <- parserGrams
               spaces
-              c <- natural lis
+              p <- parserGrams
               spaces
-              string "prot"
-              spaces
-              p <- natural lis
-              spaces
-              string "fats"
-              spaces
-              f <- natural lis
-              return (NV (fromIntegral c) (fromIntegral p) (fromIntegral f)) 
+              f <- parserGrams
+              return (NV c p f) 
  
 
 
@@ -111,16 +118,18 @@ parserIngRcp :: Parser Ingr
 parserIngRcp = do spaces
                   n <- identifier lis
                   symbol lis "-" 
-                  w <- natural lis
-                  return (Ingr n Nothing (fromIntegral w) Nothing)
+                  w <- parserGrams
+                  return (Ingr n Nothing w Nothing)
 
+parserGrams :: Parser Grams
+parserGrams = try (float lis) <|> (do {x <- (natural lis); return (fromIntegral x)})
 
 
 --Parser comandos
 parseRMComm :: Parser RMComm
-parseRMComm =     try (do{ (reserved lis) "add_ing"; ing <- parserIng; return (Add_ing ing) })
+parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (Add_ing ing) })
               <|> (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
-              <|> (do{ (reserved lis) "rm_ing"; ing <- identifier lis; n <- natural lis; return (Rm (ing, fromInteger n)) })
+              <|> (do{ (reserved lis) "rm_ing"; ing <- identifier lis; n <- parserGrams; return (Rm (ing, n)) })
               <|> (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (undefined) })
               <|> (do{ (reserved lis) "check"; return CheckV })
               <|> (do{ (reserved lis) "i_eat"; food_name <- identifier lis; return undefined })
@@ -130,6 +139,9 @@ parseRMComm =     try (do{ (reserved lis) "add_ing"; ing <- parserIng; return (A
               <|> (do{ (reserved lis) "save"; return RMSave})
               <|> (do{ (reserved lis) "close"; return RMClose})
               <|> (do{ (reserved lis) "display"; return Display })
+              <|> (do{ (reserved lis) "add_t"; spaces; iv <- parserIngValues; return (AddTable iv)})
+              <|> (do{ (reserved lis) "rm_t"; n <- identifier lis; return (RmTable n)})
+
 
 parseComm :: Parser Comm
 parseComm =       try (do{ (reserved lis) "load"; name <- identifier lis; string ".txt"; return (Load (name ++ ".txt")) })

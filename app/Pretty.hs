@@ -16,16 +16,32 @@ printEnv s = text (file s) <>
              printList "#" (inv s) printIngr <>
              text "|" <>
              text "Recetas:|" <>
-             printList "|" (rcps s) printRcp
-             
+             printList "%" (rcps s) printRcp <>
+             text "|Tabla:|" <>
+             printList "|" (table s) printIV
+
+printIV :: IngValues -> Doc
+printIV iv = text (tname iv) <>
+             text "-" <>
+             double (portion iv) <>
+             text "-" <>
+             printNV (values iv)
 
 
 printIngr :: Ingr -> Doc
 printIngr i = text (iname i) <>
               text "-" <> 
-              int (quantity i) <>
-              maybe (empty) (\e -> printExpire e) (expire i)              
-                        
+              double (quantity i) <>
+              maybe empty (\nv -> text "-" <> printNV nv) (nutritional_values i) <>     
+              maybe empty (\e -> (text "-" <> printExpire e)) (expire i)              
+
+
+printNV :: NutritionalValues -> Doc
+printNV nv = double (carb nv) <>
+             text " " <>
+             double (prot nv) <>
+             text " " <>
+             double (fats nv)
 
 {-
 printIngr' i (x:xs) = text (ing_name i) <>
