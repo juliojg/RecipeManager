@@ -20,6 +20,11 @@ printEnv s = text (file s) <>
              text "|Tabla:|" <>
              printList "|" (table s) printIV
 
+{-
+inv1|Ingredientes:|Queso-10.0-6.0 11.5 2.0-11/12/2019#Salsa-10.0-0.2 0.2 0.2-11/12/2019|Recetas:|MilanesaNap-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f%Pizza-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f|Tabla:|Queso-20.0-12.0 23.0 4.0|Salsa-100.0-2.0 2.0 2.0;
+-}
+
+
 printIV :: IngValues -> Doc
 printIV iv = text (tname iv) <>
              text "-" <>
@@ -64,20 +69,33 @@ printExpire e = int (day e) <>
 
 printList :: String -> [a] -> (a -> Doc) -> Doc
 printList sep []     _ = empty
-printList sep [x]    p = p x
+--printList sep [x]    p = p x 
 printList sep (x:xs) p = (p x) <> text sep <> printList sep xs p   
+
+printList2 :: String -> [a] -> (a -> Doc) -> Doc
+printList2 sep []     _ = empty
+printList2 sep [x]    p = p x 
+printList2 sep (x:xs) p = (p x) <> text sep <> printList2 sep xs p   
+
 
 
 printRcp :: Recipe -> Doc
 printRcp r = text (rname r) <>
-             text "..." <>
-             printList ";" (ingrs r) printIngr <>
-             text "..." <>
+             text "-i" <>
+             printList2 ";" (ingrs r) printIngr <>
+             text "-p" <>
              printList ";" (steps r) (\p -> text p) <>
-             text ";:f" <>
-             maybe empty (\xs -> ((printList ";"  xs (\a-> text a)) <> text ":ff")) (tags r) 
+             text "-t" <>
+             maybe (text "-f") (\xs -> ((printList ";"  xs (\a-> text a)) <> text "-f")) (tags r) 
              
+{-
+inv1|Ingredientes:|Queso-10.0-6.0 11.5 2.0-11/12/2019#Salsa-10.0-0.2 0.2 0.2-11/12/2019|Recetas:|MilanesaNap-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f%Pizza-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f|Tabla:|Queso-20.0-12.0 23.0 4.0|Salsa-100.0-2.0 2.0 2.0;
 
+-}
+
+
+
+--add_rcp Pizza -i Queso-20;Salsa-10 -p paso1;paso2; -t Fria; -f
 
 
 --inv1|Ingredientes:|Queso-20-11/12/2019#Salsa-20-11/12/2017#Harina-10-11/12/2018|Recetas:|MilanesaNapolitana...Queso-10;Salsa-7;Milanesa-1...Paso1;Paso2;Paso3;:f|Pizza...Queso-10;Salsa-7;Harina-15...Paso1;Paso2;Paso3;:f

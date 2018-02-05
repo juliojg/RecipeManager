@@ -91,8 +91,8 @@ handleRMComm comm =
         CheckV      -> do date <- liftIO getCurrentDateTime
                           checkE date
         IEat name   -> undefined
-        WTE Nothing -> do list <- whatToEat
-                          liftIO $ putStrLn ("Puede preparar: " ++ show list)
+        WTE cond -> do list <- whatToEat cond
+                       liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
         WCDW names  -> undefined
         RMHelp      -> showRMHelp
         Display     -> do s <- get 
@@ -124,7 +124,7 @@ showRMHelp = do liftIO $ setCursorPosition 0 0
                 liftIO $ putStrLn "add_rcp  nombre...ingr[;i2]...paso1[;p2]  : Añadir receta a la lista"
                 liftIO $ putStrLn "rm_rcp   nombre                           : Eliminar una receta del inventario"
                 liftIO $ putStrLn "check                                     : Verifica vencimientos"                
-                liftIO $ putStrLn "need_food                                 : Mostrar comidas preparables"                
+                liftIO $ putStrLn "need_food [con {tag, <n carb}[sin {tag1,}]: Mostrar comidas preparables"                
                 liftIO $ putStrLn "display                                   : Mostrar el inventario"
                 liftIO $ putStrLn "save                                      : Guardar el inventario"
                 liftIO $ putStrLn "close                                     : Cerrar inventario"                 

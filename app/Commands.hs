@@ -1,6 +1,5 @@
 module Commands where
 
-
 import Types
 import Monads
 import Pretty
@@ -11,8 +10,8 @@ import Text.Parsec.Token
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.Char
 
-
 import Text.PrettyPrint.HughesPJ (render)
+import Control.Exception (catch,IOException)
 import Control.Monad.IO.Class
 import Control.Applicative
 import Control.Monad (liftM, ap)
@@ -20,17 +19,19 @@ import Data.List
 import Data.Ord
 import System.Directory (createDirectoryIfMissing)
 
-
--- agregar en el estado ubicacion de guardado, ahora guarda donde se ejecuta
-
+--Carga un estado de un archivo del directorio /save donde se ejecuto 
 loadRM :: String -> IO (Either Error Env)
-loadRM path = do file <- readFile ("save/" ++ path)
+loadRM path = do file <-  catch (readFile ("save/" ++ path)) (\e -> do let err = show (e :: IOException)
+                                                                       putStrLn ("No se pudo abrir el archivo " ++ path)
+                                                                       return "")
+              
                  case parse parserEnv "" file of
-                    Left err  -> return (Left CargaFallida)
-                    Right s   -> do putStrLn ("Cargado archivo " ++ path) 
-                                    return (Right s)
+                                 Left err  -> return (Left CargaFallida)
+                                 Right s   -> do putStrLn ("Cargado archivo " ++ path) 
+                                                 return (Right s)
+               -- Left er -> return (Left CargaFallida)
 
---Guarda el estado del programa, en un archivo de la carpeta /save donde se ejecuto
+--Guarda el estado del programa, en un archivo del directorio /save donde se ejecuto
 saveRM :: StateError ()
 saveRM = do s <- get 
             liftIO $ createDirectoryIfMissing False "save"
@@ -42,12 +43,31 @@ saveRM = do s <- get
 
 --Lista las comidas preparables con lo disponible
 
-whatToEat :: StateError [Recipe]
-whatToEat = do s <- get
-               return (whatToEat' (inv s) (rcps s))
-               where whatToEat' _ [] = []
-                     whatToEat'[] _  = []
-                     whatToEat' i r = filter (preparable_with i) r
+whatToEat :: Maybe [Cond] -> StateError [Recipe]
+whatToEat conds = do s <- get
+                     let prep = filter (preparable_with (inv s)) (rcps s) in 
+                      case conds of 
+                        Nothing -> return prep
+                        Just xs -> having xs prep
+                        
+
+having :: [Cond] -> [Recipe] -> StateError [Recipe]
+having []     rs = return rs
+having (x:xs) rs = do res <- (having xs rs)
+                      has <- getRcpsNV rs
+                      let julio = map fst (filter (check_cond x) has) in  
+                       return $ (intersect julio res) 
+                        
+
+check_cond :: Cond -> (Recipe,NutritionalValues) -> Bool
+check_cond (LessThan c) (r,nv) = case c of Carb g -> carb nv <= g
+                                           Prot g -> prot nv <= g
+                                           Fats g -> fats nv <= g
+check_cond (MoreThan c) (r,nv) = case c of Carb g -> (carb nv) >= g
+                                           Prot g -> (prot nv) >= g
+                                           Fats g -> (fats nv) >= g
+check_cond (With t)   (r,nv)  = elem t (maybe [] id (tags r))
+check_cond (Without t) (r,nv) = not (elem t (maybe [] id (tags r)))  
 
 
 preparable_with :: [Ingr] -> Recipe -> Bool
@@ -56,7 +76,7 @@ preparable_with inv r = foldr (&&) True (map (check_if_have_in inv) (ingrs r))
 --suma lo disponible en el inventario y se fija si alcanza para lo que pide la receta
 check_if_have_in :: [Ingr] -> Ingr -> Bool 
 check_if_have_in inv n = (foldr (+) 0 (map (\i -> if iname i == iname n then quantity i else 0) inv)) >= (quantity n)  
-            
+
 
 --Añade un ingrediente dado al inventario
 addInv :: Ingr -> StateError ()
@@ -142,13 +162,9 @@ rmRcp name = do s <- get
 --Revisa vencimientos
 checkE :: ExpireDate -> StateError ()
 checkE today = do s <- get
-                  liftIO $ putStrLn ("Ingredientes vencidos: " ++ show (filter (checkE' today) (inv s)))
+                  let res = show (filter (maybe True (\e -> today > e) . expire) (inv s))
+                  liftIO $ putStrLn ("Ingredientes vencidos: " ++ res)
                   
-
-checkE' :: ExpireDate -> Ingr -> Bool
-checkE' today i = case expire i of 
-                               Nothing -> True
-                               Just v  -> (today > v)
 
 
 --Agrega un ingrediente a la tabla de valores
@@ -173,6 +189,7 @@ rmTable name = do s <- get
                     Left err -> liftIO $ putStrLn ("El igrediente no esta en la tabla: " ++ name)
                     Right ns -> do put (Env (file s) (inv s) (rcps s) ns (tag_list s) 0 )
                                    liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " removidos") 
+
 rmTable' :: String -> [IngValues] -> Either Error [IngValues]
 rmTable' name [] = Left IngrInexistente
 rmTable' name (x:xs) = if (tname x == name)
@@ -204,7 +221,6 @@ threeRule :: Grams -> Grams -> Grams -> Grams
 threeRule x y z = (z * y) / x
 
 
-
 {-The Atwater system uses the average values of 4 Kcal/g for protein,
  4 Kcal/g for carbohydrate, and 9 Kcal/g for fat. -}
 
@@ -212,11 +228,21 @@ getCalories :: NutritionalValues -> KiloCalorie
 getCalories nv = (carb nv) * 4.0 + (prot nv) * 4.0 + (fats nv) * 9.0
 
 
+
+
 getRcpNV :: Recipe -> StateError (Either Error NutritionalValues)
 getRcpNV r = do s <- get
-                case foldr (sumNV ) (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
+                case foldr sumNV (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
                    Left err -> throw IngrInexistente
                    Right nv -> return (Right nv)      
+                    
+getRcpsNV :: [Recipe] -> StateError [(Recipe,NutritionalValues)]
+getRcpsNV [] = return []
+getRcpsNV (r:rs) = do s <- get
+                      aux <- getRcpsNV rs
+                      case foldr sumNV (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
+                        Left err -> return aux
+                        Right nv -> return $ (r,nv):aux      
                     
 
 accNV :: NutritionalValues
@@ -227,4 +253,4 @@ sumNV n1 n2 = case n1 of
                 Left err -> Left err
                 Right a1 -> case n2 of 
                               Left err -> Left err
-                              Right a2 -> Right (NV (carb a1 + carb a2) (prot a1 + prot a2) (fats a1 + fats a2) )
+                              Right a2 -> Right (NV (carb a1 + carb a2) (prot a1 + prot a2) (fats a1 + fats a2))
