@@ -196,14 +196,14 @@ rmTable' name (x:xs) = if (tname x == name)
                        then Right xs
                        else either (Left) (\ns -> Right (x : ns)) (rmTable' name xs)
 
-
+{-
 --Añade un tag a la lista de tags
 addTag :: Tag -> StateError ()
 addTag t = do s <- get
               if elem t (tag_list s)
               then liftIO $ putStrLn "El tag ya esta en la lista"
               else put   (Env (file s) (inv s) (rcps s) (table s) (t : (tag_list s)) 0 )
-                 
+  -}               
 
 
 --Obtiene los valores nutricionales de un ingr en base a la tabla
