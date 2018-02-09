@@ -19,9 +19,8 @@ data RMComm = Add_ing Ingr
             | RMClose
             | Display
             | AddTable IngValues
-            | RmTable String
-            | AddTag String             
-
+            | RmTable String             
+            | ImportTable String
 
 data Comm = Load String         
           | Quit
@@ -71,8 +70,7 @@ data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without
 data Env = Env {file  :: String,
                 inv   :: [Ingr],
                 rcps  :: [Recipe],
-                table :: [IngValues],
-                tag_list  :: [Tag], 
+                table :: [IngValues], 
                 flag_saved :: Int}
 
 

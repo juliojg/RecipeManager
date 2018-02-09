@@ -48,17 +48,6 @@ printNV nv = double (carb nv) <>
              text " " <>
              double (fats nv)
 
-{-
-printIngr' i (x:xs) = text (ing_name i) <>
-                      text "-" <> 
-                      int (snd x) <>
-                      case fst x of
-                        Nothing -> text ";" <> printIngr' i xs
-                        Just v  -> text "-" <>
-                                   printV (fst x) <>
-                                   text "#" <> 
-                                   printIngr' i xs
--}
 printExpire :: ExpireDate -> Doc
 printExpire e = int (day e) <>
                 text "/" <>
@@ -68,8 +57,7 @@ printExpire e = int (day e) <>
 
 
 printList :: String -> [a] -> (a -> Doc) -> Doc
-printList sep []     _ = empty
---printList sep [x]    p = p x 
+printList sep []     _ = empty 
 printList sep (x:xs) p = (p x) <> text sep <> printList sep xs p   
 
 printList2 :: String -> [a] -> (a -> Doc) -> Doc
@@ -88,17 +76,3 @@ printRcp r = text (rname r) <>
              text "-t" <>
              maybe (text "-f") (\xs -> ((printList ";"  xs (\a-> text a)) <> text "-f")) (tags r) 
              
-{-
-inv1|Ingredientes:|Queso-10.0-6.0 11.5 2.0-11/12/2019#Salsa-10.0-0.2 0.2 0.2-11/12/2019|Recetas:|MilanesaNap-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f%Pizza-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f|Tabla:|Queso-20.0-12.0 23.0 4.0|Salsa-100.0-2.0 2.0 2.0;
-
--}
-
-
-
---add_rcp Pizza -i Queso-20;Salsa-10 -p paso1;paso2; -t Fria; -f
-
-
---inv1|Ingredientes:|Queso-20-11/12/2019#Salsa-20-11/12/2017#Harina-10-11/12/2018|Recetas:|MilanesaNapolitana...Queso-10;Salsa-7;Milanesa-1...Paso1;Paso2;Paso3;:f|Pizza...Queso-10;Salsa-7;Harina-15...Paso1;Paso2;Paso3;:f
-
-
-

@@ -15,6 +15,7 @@ instance Show Error where
     show RecetaInexistente = "Nombre de receta inexistente"
     show IngrInexistente = "Ingrediente no ingresado"
     show IngrInsuficiente = "No hay tanto de ese ingrediente"
+    show CargaFallida = "No se ha podido cargar el archivo"
 
 newtype StateError a = StateError { runStateError :: Env -> IO (Either Error (a, Env)) }
 

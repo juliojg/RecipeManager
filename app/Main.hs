@@ -41,7 +41,7 @@ readevalprint = do line <- readline prompt
 
 handleComm :: Comm -> IO ()
 handleComm Help          = do showHelp ; readevalprint
-handleComm (Load str)    = do res <-loadRM str 
+handleComm (Load str)    = do res <- loadRM str 
                               case res of 
                                         Left err  -> do putStrLn "Error de lectura"; readevalprint 
                                         Right s -> void $ runStateError readevalprintRM s
@@ -49,7 +49,7 @@ handleComm Quit          = do putStrLn "Cerrando RecipeManger"; return ()
 handleComm (NewInv name) = do putStrLn ("Creado inventario: " ++ name)
                               putStrLn ("Ahora esta en el inventario: " ++ name ++ 
                                         ", Vea los comados de inventario con \"help\"") 
-                              void $ runStateError readevalprintRM (Env name [] [] [] [] 0)
+                              void $ runStateError readevalprintRM (Env name [] [] [] 0)
 
 
 readevalprintRM :: StateError ()
@@ -99,8 +99,10 @@ handleRMComm comm =
                           liftIO $ putStrLn (show s)
         AddTable iv -> addTable iv 
         RmTable n -> rmTable n 
-
-
+        ImportTable file -> do t <- importRM file
+                               mapM_ addTable t 
+                               liftIO $ putStrLn ("Cargada tabla de: " ++ file) 
+                               
 
 
 showHelp :: IO ()
@@ -117,18 +119,19 @@ showRMHelp :: StateError ()
 showRMHelp = do liftIO $ setCursorPosition 0 0
                 liftIO $ clearScreen
                 liftIO $ putStrLn "Lista de comandos disponibles:"
-                liftIO $ putStrLn "add_ingr nombre-cantidad-dd/mm/aa         : Añadir un ingrediente al inventario"
-                liftIO $ putStrLn "rm_ing   nombre cantidad                  : Eliminar un ingr del inventario"
-                liftIO $ putStrLn "add_t    nombre-cantidad-carb prot grasas : Añadir un ingrediente a la tabla"
-                liftIO $ putStrLn "rm_t     nombre                           : Eliminar un ingrediente al inventario"
-                liftIO $ putStrLn "add_rcp  nombre...ingr[;i2]...paso1[;p2]  : Añadir receta a la lista"
-                liftIO $ putStrLn "rm_rcp   nombre                           : Eliminar una receta del inventario"
-                liftIO $ putStrLn "check                                     : Verifica vencimientos"                
-                liftIO $ putStrLn "need_food [con {tag, <n carb}[sin {tag1,}]: Mostrar comidas preparables"                
-                liftIO $ putStrLn "display                                   : Mostrar el inventario"
-                liftIO $ putStrLn "save                                      : Guardar el inventario"
-                liftIO $ putStrLn "close                                     : Cerrar inventario"                 
-                liftIO $ putStrLn "help                                      : Mostrar ayuda" 
+                liftIO $ putStrLn "add_ing  nombre-cantidad-dd/mm/aa           : Añadir un ingrediente al inventario"
+                liftIO $ putStrLn "rm_ing   nombre-cantidad                    : Eliminar un ingr del inventario"
+                liftIO $ putStrLn "add_t    nombre-cantidad-carb prot grasas   : Añadir un ingrediente a la tabla"
+                liftIO $ putStrLn "rm_t     nombre                             : Eliminar un ingrediente al inventario"
+                liftIO $ putStrLn ("add_rcp  nombre -i ings -p pasos -t tags -f : Añadir receta a la lista" ++ "\n" ++
+                                   "(ings : ing1[;ing2] | pasos : paso1;[paso2;] | tags : tag1;[tag2;])")
+                liftIO $ putStrLn "rm_rcp   nombre                             : Eliminar una receta del inventario"
+                liftIO $ putStrLn "check  S                                     : Verifica vencimientos"                
+                liftIO $ putStrLn "need_food [con {tag, <n carb}][sin {tag1,}] : Mostrar comidas preparables"                
+                liftIO $ putStrLn "display                                     : Mostrar el inventario"
+                liftIO $ putStrLn "save                                        : Guardar el inventario"
+                liftIO $ putStrLn "close                                       : Cerrar inventario"                 
+                liftIO $ putStrLn "help                                        : Mostrar ayuda" 
 
 
 

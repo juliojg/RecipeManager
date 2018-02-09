@@ -26,11 +26,11 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , commentEnd      = "*/"
                                   , commentLine     = "//"
                                   , opLetter        = char '='
-                                  , reservedOpNames = ["<",">"]
+                                  , reservedOpNames = ["<",">","{","}"]
                                   , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
                                                         "check", "i_eat", "need_food", 
                                                         "new_inv", "save", "load", "close", "help", "display", "quit",
-                                                        "add_t", "rm_t", "add_tag"]
+                                                        "add_t", "rm_t"]
                                   })
 
 --Parser de archivos guardados
@@ -42,7 +42,7 @@ parserEnv = do name <- identifier lis
                rcps  <- sepEndBy (parserRcp) (string "%")
                string "|Tabla:|"
                t     <- sepEndBy (parserIngValues) (string "|")
-               return (Env name ingrs rcps t [] 1)
+               return (Env name ingrs rcps t 1)
 
 
 parserAddedIng :: Parser Ingr
@@ -53,6 +53,19 @@ parserAddedIng = do n  <- identifier lis
                     nv <- parserNV
                     e  <- parserExpireDate                    
                     return (Ingr n (Just nv) w (Just e) )
+
+--Parser de tabla de valores de un inventario
+--Parser de archivos guardados
+parserTable :: Parser [IngValues]
+parserTable = do identifier lis
+                 string "|Ingredientes:|"
+                 sepEndBy (parserAddedIng) (string "#")
+                 string "|Recetas:|"
+                 sepEndBy (parserRcp) (string "%")
+                 string "|Tabla:|"
+                 t     <- sepEndBy (parserIngValues) (string "|")
+                 return t
+
 
 
 -- Parser de ingredientes
@@ -152,13 +165,13 @@ parserCond =     try (do t <- identifier lis; return (With t))
 parserConds :: Parser [Cond]
 parserConds = do string "con"
                  spaces
-                 string "{"
-                 xs <- manyTill (sepBy1 parserCond (string ", ")) (string "}")
+                 reservedOp lis "{"
+                 xs <- manyTill (sepBy1 parserCond (string ", ")) (reservedOp lis "}")
                  l <- optionMaybe (do spaces
                                       string "sin"
                                       spaces
-                                      string "{"
-                                      a <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (string "}")
+                                      reservedOp lis "{"
+                                      a <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (reservedOp lis "}")
                                       return a)
                  case l of 
                     Nothing -> return (foldr (++) [] xs)
@@ -174,10 +187,10 @@ parserConds = do string "con"
 parseRMComm :: Parser RMComm
 parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (Add_ing ing) })
               <|> (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
-              <|> (do{ (reserved lis) "rm_ing"; ing <- identifier lis; n <- parserGrams; return (Rm (ing, n)) })
+              <|> (do{ (reserved lis) "rm_ing";string "-"; ing <- identifier lis; n <- parserGrams; return (Rm (ing, n)) })
               <|> (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (Rm_rcp rcp_name) })
               <|> (do{ (reserved lis) "check"; return CheckV })
-              <|> (do{ (reserved lis) "i_eat"; food_name <- identifier lis; return undefined })
+              <|> (do{ (reserved lis) "i_eat"; rcp_name <- identifier lis; return (IEat rcp_name)})
               <|> (do{ (reserved lis) "need_food"; c <- optionMaybe (parserConds); return (WTE c) })
               <|> (do{ (reserved lis) "what_with"; xs <- many1 (sepBy1 (identifier lis) (string ";")); return (WCDW (foldr (++) [] xs)) })
               <|> (do{ (reserved lis) "help"; return RMHelp})
@@ -186,10 +199,10 @@ parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (
               <|> (do{ (reserved lis) "display"; return Display })
               <|> (do{ (reserved lis) "add_t"; spaces; iv <- parserIngValues; return (AddTable iv)})
               <|> (do{ (reserved lis) "rm_t"; n <- identifier lis; return (RmTable n)})
-              <|> (do{ (reserved lis) "add_tag"; n <- identifier lis; return (AddTag n)})
-
+              <|> (do{ (reserved lis) "import_table"; file <- identifier lis; string ".rcpm"; return (ImportTable (file ++ ".rcpm"))})
 parseComm :: Parser Comm
-parseComm =       try (do{ (reserved lis) "load"; name <- identifier lis; string ".rcpm"; return (Load (name ++ ".rcpm")) })
+parseComm =       try (do{ (reserved lis) "load"; file <- identifier lis; string ".rcpm"; return (Load (file ++ ".rcpm")) })
               <|> (do{ (reserved lis) "quit"; return Quit })
               <|> (do{ (reserved lis) "help"; return Help })
               <|> (do{ (reserved lis) "new_inv"; inv_name <- identifier lis; return (NewInv inv_name) })
+   
