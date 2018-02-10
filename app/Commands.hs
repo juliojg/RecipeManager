@@ -20,14 +20,15 @@ import Data.Ord
 import System.Directory (createDirectoryIfMissing)
 
 --Carga un estado de un archivo del directorio /save donde se ejecuto 
-loadRM :: String -> IO (Either Error Env)
-loadRM path = do file <- catch (readFile ("save/" ++ path)) (\e -> do let err = show (e :: IOException)
-                                                                      putStrLn ("No se pudo abrir el archivo " ++ path)
-                                                                      return "")
+loadRM :: String -> StateError ()
+loadRM path = do file <- liftIO $ catch (readFile ("save/" ++ path)) (\e -> do let err = show (e :: IOException)
+                                                                               putStrLn ("No se pudo abrir el archivo " ++ path)
+                                                                               return "")
                  case parse parserEnv "" file of
-                    Left err -> return (Left CargaFallida)
-                    Right s  -> do putStrLn ("Cargado archivo " ++ path) 
-                                   return (Right s)
+                    Left err -> throw CargaFallida
+                    Right s  -> do put s
+                                   liftIO $ putStrLn ("Cargado archivo " ++ path) 
+                                   return ()
 
 
 --Guarda el estado del programa, en un archivo del directorio /save donde se ejecuto
@@ -39,28 +40,24 @@ saveRM = do s <- get
             put (Env (file s) (inv s) (rcps s) (table s) 1)
 
 --Importa la tabla de valores de otro inventario al actual
-importRM :: String -> StateError [IngValues]
+importRM :: String -> StateError ()
 importRM path = do r <- liftIO (catch (readFile ("save/" ++ path)) 
                                       (\e -> do let err = show (e :: IOException)
                                                 putStrLn ("No se pudo abrir el archivo " ++ path)
                                                 return ""))
                    case parse parserTable "" r of
-                                  Left err -> throw CargaFallida --liftIO $ putStrLn  ("No se pudo cargar el archivo" ++ path)
-                                  Right s  -> return s
+                                  Left err -> throw CargaFallida
+                                  Right s  -> do mapM_ addTable s
+                                                 liftIO $ putStrLn ("Importada tabla de: " ++ path)
              
-
 --Añade un ingrediente dado al inventario
 addInv :: Ingr -> StateError ()
 addInv i = do s <- get
-              case (getNV (table s) (iname i) (quantity i)) of 
-                Left err -> liftIO $ putStrLn ("El ingrediente " ++ iname i ++ " no esta en la tabla, ingreselo alli primero.")
-                Right nv -> let ni = Ingr (iname i) (Just nv) (quantity i) (expire i) 
-                            in do put (Env (file s) 
-                                           (searchPlace ni (inv s)) 
-                                           (rcps s) 
-                                           (table s) 
-                                           0)  
-                                  liftIO $ putStrLn ("Ingrediente agregado: " ++ iname i)
+              nv <- getNV (table s) (iname i) (quantity i)
+              let ni = Ingr (iname i) (Just nv) (quantity i) (expire i) in 
+               put (Env (file s) (searchPlace ni (inv s)) (rcps s) (table s) 0)  
+              liftIO $ putStrLn ("Ingrediente agregado: " ++ iname i)
+
 
 
 searchPlace :: Ingr -> [Ingr] -> [Ingr]
@@ -85,22 +82,12 @@ searchPlace' i (x:xs) = if (iname i == iname x)
 --Añade una receta dada a la lista de recetas
 addRcp :: Recipe -> StateError ()
 addRcp r = do s <- get
-              let t = searchAndPutR (rcps s) r in
-               case t of 
-                         Left  err -> liftIO $ putStrLn ("La receta "++ show (rname r) ++ " ya esta en la lista")
-                         Right ok  -> do put (Env (file s) (inv s) ok (table s) 0)
-                                         liftIO $ putStrLn ("Receta agregada: " ++ rname r)
+              if (filter (\n -> rname r == rname n) (rcps s) == [])
+              then put (Env (file s) (inv s) (r:(rcps s)) (table s) 0)
+              else throw RecetaExistente
+              liftIO $ putStrLn ("Receta agregada: " ++ rname r)
 
-searchAndPutR :: [Recipe] -> Recipe -> Either Error [Recipe]
-searchAndPutR []     r = Right [r]
-searchAndPutR (x:xs) r = case checkExistenceR (x:xs) r of
-                                                       False -> Right (r:x:xs)
-                                                       True  -> Left RecetaExistente
 
-checkExistenceR :: [Recipe] -> Recipe -> Bool
-checkExistenceR rcps n = case filter (\r -> rname n == rname r) rcps of
-                                                                      []     -> False
-                                                                      (x:xs) -> True
 
 --Elimina cierta cantidad de un ingrediente dado del inventario
 rmInv :: String -> Grams -> StateError ()
@@ -120,6 +107,8 @@ rmInv' name q (x:xs) = if (iname x == name)
                                                     GT -> Right $ Ingr name (nutritional_values x) (quantity x - q) (expire x) : xs)
                        else either (Left) (\ns -> Right (x : ns)) (rmInv' name q xs)
 
+
+
 --Elimina todos los ingredientes usados en una receta, de haberlos.
 
 
@@ -132,6 +121,8 @@ rmRcp name = do s <- get
                     then liftIO $ putStrLn ("La receta " ++ name ++ " no esta en la lista:")
                     else do put (Env (file s) (inv s) nr (table s) 0) 
                             liftIO $ putStrLn ("Receta eliminada: " ++ name)
+
+
 
 --Revisa vencimientos
 checkE :: ExpireDate -> StateError ()
@@ -171,12 +162,12 @@ rmTable' name (x:xs) = if (tname x == name)
                        else either (Left) (\ns -> Right (x : ns)) (rmTable' name xs)
 
 --Obtiene los valores nutricionales de un ingr en base a la tabla
-getNV :: [IngValues] -> String -> Grams -> Either Error NutritionalValues
-getNV []     name w = Left IngrInexistente
+getNV :: [IngValues] -> String -> Grams -> StateError NutritionalValues
+getNV []     name w = throw IngrInexistente
 getNV (x:xs) name w = if tname x == name 
-                      then Right (NV (threeRule (portion x) w (carb (values x)))  
-                                     (threeRule (portion x) w (prot (values x)))
-                                     (threeRule (portion x) w (fats (values x))))
+                      then return (NV (threeRule (portion x) w (carb (values x)))  
+                                      (threeRule (portion x) w (prot (values x)))
+                                      (threeRule (portion x) w (fats (values x))))
                       else getNV xs name w
 
 
@@ -195,30 +186,39 @@ getCalories nv = (carb nv) * 4.0 + (prot nv) * 4.0 + (fats nv) * 9.0
 
 getRcpNV :: Recipe -> StateError NutritionalValues
 getRcpNV r = do s <- get
-                case foldr sumNV (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
+                aux <- mapM (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)  
+                return (foldr (sumNV) accNV aux)
+
+{-
+foldr sumNV accNV (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
                    Left err -> throw IngrInexistente
                    Right nv -> return nv      
-
+-}
 --Crea un diccionario basico con las recetas y sus respectivos valores                    
 getRcpsNV :: [Recipe] -> StateError [(Recipe,NutritionalValues)]
 getRcpsNV [] = return []
 getRcpsNV (r:rs) = do s <- get
+                      a <- getRcpNV r
                       aux <- getRcpsNV rs
-                      case foldr sumNV (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
-                        Left err -> return aux
-                        Right nv -> return $ (r,nv):aux      
+                      --case foldr sumNV (Right accNV) (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r)) of
+                      --  Left err -> return aux
+     {- Right nv -> -}return $ (r,a):aux      
                     
 
 accNV :: NutritionalValues
 accNV = NV 0 0 0 
 
+sumNV :: NutritionalValues -> NutritionalValues -> NutritionalValues
+sumNV n1 n2 = (NV (carb n1 + carb n2) (prot n1 + prot n2) (fats n1 + fats n2))
+
+{-
 sumNV :: Either Error NutritionalValues -> Either Error NutritionalValues -> Either Error NutritionalValues
 sumNV n1 n2 = case n1 of 
                 Left err -> Left err
                 Right a1 -> case n2 of 
                               Left err -> Left err
                               Right a2 -> Right (NV (carb a1 + carb a2) (prot a1 + prot a2) (fats a1 + fats a2))
-
+-}
 
 --Lista las comidas preparables con lo disponible
 

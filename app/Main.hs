@@ -26,31 +26,33 @@ main :: IO ()
 main = do setCursorPosition 0 0
           clearScreen
           putStrLn "Bienvenido a RecipeManager, cargue o cree un inventario (escriba \"help\" para ver la ayuda)"
-          readevalprint
+          void $ runStateError readevalprint (Env [] [] [] [] 0)
 
-readevalprint :: IO ()
-readevalprint = do line <- readline prompt
+
+readevalprint :: StateError ()
+readevalprint = do line <- liftIO $ readline prompt
                    case line of 
-                     Nothing -> putStrLn "Escriba un comando (puede usar \"help\" para ver los disponibles)"
-                     Just xs -> do addHistory xs
+                     Nothing -> liftIO $ putStrLn "Escriba un comando (puede usar \"help\" para ver los disponibles)"
+                     Just xs -> do liftIO $ addHistory xs
                                    case (parse (parseComm) "" xs) of
-                                     Left er      -> do putStrLn "Comando mal ingresado"; readevalprint
+                                     Left er      -> do liftIO $ putStrLn "Comando mal ingresado"; readevalprint
                                      Right comm   -> handleComm comm 
                                                       
  
 
-handleComm :: Comm -> IO ()
-handleComm Help          = do showHelp ; readevalprint
-handleComm (Load str)    = do res <- loadRM str 
-                              case res of 
-                                        Left err  -> do putStrLn "Error de lectura"; readevalprint 
-                                        Right s -> void $ runStateError readevalprintRM s
-handleComm Quit          = do putStrLn "Cerrando RecipeManger"; return () 
-handleComm (NewInv name) = do putStrLn ("Creado inventario: " ++ name)
-                              putStrLn ("Ahora esta en el inventario: " ++ name ++ 
-                                        ", Vea los comados de inventario con \"help\"") 
-                              void $ runStateError readevalprintRM (Env name [] [] [] 0)
-
+handleComm :: Comm -> StateError ()
+handleComm comm = 
+    case comm of 
+        Help        -> do liftIO showHelp; readevalprint
+        Load str    -> do loadRM str
+                          readevalprintRM 
+        Quit        -> do liftIO $ putStrLn "Cerrando RecipeManger" 
+                          return () 
+        NewInv name -> do liftIO $ putStrLn ("Creado inventario: " ++ name)
+                          liftIO $ putStrLn ("Ahora esta en el inventario: " ++ name ++ 
+                                            ", vea los comados de inventario con \"help\"") 
+                          put (Env name [] [] [] 0)
+                          readevalprintRM
 
 readevalprintRM :: StateError ()
 readevalprintRM = do line <- liftIO $ readline prompt
@@ -63,47 +65,30 @@ readevalprintRM = do line <- liftIO $ readline prompt
                                                            case flag_saved s of
                                                              0 -> check_save
                                                              1 -> do liftIO $ putStrLn "Inventario cerrado exitosamente"
-                                                                     liftIO readevalprint
+                                                                     readevalprint
                                        Right comm   -> do handleRMComm comm
                                                           readevalprintRM   
                                     
 
-check_save :: StateError ()
-check_save = do liftIO $ putStrLn "¿Quiere guardar el inventario? y/n"
-                s <- liftIO getLine
-                case s of 
-                    "y"       -> do saveRM; 
-                                    liftIO $ putStrLn "Inventario cerrado exitosamente"
-                                    liftIO readevalprint
-                    "n"       -> do liftIO $ putStrLn "Inventario cerrado exitosamente"
-                                    liftIO readevalprint
-                    otherwise -> check_save
- 
 
 handleRMComm :: RMComm -> StateError ()
 handleRMComm comm = 
     case comm of 
         RMSave      -> saveRM
-        Add_rcp rcp -> addRcp rcp
-        Add_ing ing -> addInv ing 
+        Add_rcp rcp -> catchError (addRcp rcp) (\e -> liftIO $ putStrLn $ show e ++ rname rcp)
+        Add_ing ing -> catchError (addInv ing) (\e -> liftIO $ putStrLn $ show e ++ iname ing)
         Rm (name,n) -> rmInv name n
         Rm_rcp name -> rmRcp name
-        CheckV      -> do date <- liftIO getCurrentDateTime
-                          checkE date
+        CheckV      -> do date <- liftIO getCurrentDateTime; checkE date
         IEat name   -> undefined
         WTE cond -> do list <- whatToEat cond
                        liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
         WCDW names  -> undefined
         RMHelp      -> showRMHelp
-        Display     -> do s <- get 
-                          liftIO $ putStrLn (show s)
+        Display     -> do s <- get; liftIO $ putStrLn (show s)
         AddTable iv -> addTable iv 
         RmTable n -> rmTable n 
-        ImportTable file -> do t <- importRM file
-                               mapM_ addTable t 
-                               liftIO $ putStrLn ("Cargada tabla de: " ++ file) 
-                               
-
+        ImportTable file -> catchError (importRM file) (\_ -> return ())
 
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0
@@ -134,5 +119,13 @@ showRMHelp = do liftIO $ setCursorPosition 0 0
                 liftIO $ putStrLn "help                                        : Mostrar ayuda" 
 
 
-
-
+check_save :: StateError ()
+check_save = do liftIO $ putStrLn "¿Quiere guardar el inventario? y/n"
+                s <- liftIO getLine
+                case s of 
+                    "y"       -> do saveRM; 
+                                    liftIO $ putStrLn "Inventario cerrado exitosamente"
+                                    readevalprint
+                    "n"       -> do liftIO $ putStrLn "Inventario cerrado exitosamente"
+                                    readevalprint
+                    otherwise -> check_save

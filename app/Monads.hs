@@ -8,14 +8,16 @@ import Control.Monad (liftM, ap)
 import Data.List
 import Data.Ord
 
-data Error = RecetaInexistente | RecetaExistente | IngrInexistente | IngrInsuficiente | CargaFallida
+data Error = RecetaInexistente | RecetaExistente | IngrInexistente | IngrInsuficiente | CargaFallida | IngrInexistenteT
 
 instance Show Error where
-    show RecetaExistente = "Nombre de receta existente"
-    show RecetaInexistente = "Nombre de receta inexistente"
-    show IngrInexistente = "Ingrediente no ingresado"
-    show IngrInsuficiente = "No hay tanto de ese ingrediente"
-    show CargaFallida = "No se ha podido cargar el archivo"
+ show RecetaInexistente = "La siguiente receta no esta en la lista: "
+ show RecetaExistente = "La siguiente receta ya esta en la lista: "
+ show IngrInexistente = "El siguiente ingrediente no esta en el inventario: "
+ show IngrInexistenteT = "El siguiente ingrediente no esta en la tabla, ingreselo alli primero: "
+ show IngrInsuficiente = "No se posee tanto del siguiente ingrediente: "
+ show CargaFallida = "No se ha podido cargar el archivo: "
+
 
 newtype StateError a = StateError { runStateError :: Env -> IO (Either Error (a, Env)) }
 
@@ -30,7 +32,7 @@ instance Monad StateError where
     return x = StateError (\s -> return (Right (x, s)))
     m >>= f  = StateError (\s -> do e <- runStateError m s 
                                     case e of 
-                                       Left err      -> return (Left err)
+                                       Left err     -> return (Left err)
                                        Right (v,s') -> runStateError (f v) s')  
 
 
@@ -46,9 +48,17 @@ instance MonadState StateError where --ver si son necesarios, considerando add_i
 --Clase para representar monadas que lanzan errores 
 class Monad m => MonadError m where
     throw :: Error -> m a
+    catchError :: m a -> (Error -> m a) -> m a
 
 instance MonadError StateError where
     throw err = StateError (\s -> return (Left err))
+    catchError m handler = StateError (\s -> do e <- runStateError m s
+                                                case e of 
+                                                  Left err -> runStateError (handler err) s
+                                                  Right (v,s') -> runStateError (return v) s')
+
+
+
 
 instance MonadIO StateError where
     liftIO io = StateError (\s -> do x <- io
