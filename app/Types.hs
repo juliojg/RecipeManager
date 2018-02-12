@@ -13,7 +13,6 @@ data RMComm = Add_ing Ingr
             | CheckV
             | IEat String
             | WTE (Maybe [Cond]) --what to eat
-            | WCDW [String] -- what can do with
             | RMHelp
             | RMSave
             | RMClose
@@ -29,7 +28,7 @@ data Comm = Load String
 
 data Ingr = Ingr { iname :: String, 
                    nutritional_values :: Maybe NutritionalValues,
-                   quantity :: Grams, --either para mililitros?
+                   quantity :: Grams, 
                    expire :: Maybe ExpireDate
                  }
 
@@ -66,7 +65,8 @@ type KiloCalorie = Double
 
 data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag
 
---El estado que llevara el programa
+--The state that the program will carry
+
 data Env = Env {file  :: String,
                 inv   :: [Ingr],
                 rcps  :: [Recipe],

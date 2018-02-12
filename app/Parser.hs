@@ -187,12 +187,11 @@ parserConds = do string "con"
 parseRMComm :: Parser RMComm
 parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (Add_ing ing) })
               <|> (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
-              <|> (do{ (reserved lis) "rm_ing";string "-"; ing <- identifier lis; n <- parserGrams; return (Rm (ing, n)) })
+              <|> (do{ (reserved lis) "rm_ing"; ing <- identifier lis;string "-"; n <- parserGrams; return (Rm (ing, n)) })
               <|> (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (Rm_rcp rcp_name) })
               <|> (do{ (reserved lis) "check"; return CheckV })
               <|> (do{ (reserved lis) "i_eat"; rcp_name <- identifier lis; return (IEat rcp_name)})
               <|> (do{ (reserved lis) "need_food"; c <- optionMaybe (parserConds); return (WTE c) })
-              <|> (do{ (reserved lis) "what_with"; xs <- many1 (sepBy1 (identifier lis) (string ";")); return (WCDW (foldr (++) [] xs)) })
               <|> (do{ (reserved lis) "help"; return RMHelp})
               <|> (do{ (reserved lis) "save"; return RMSave})
               <|> (do{ (reserved lis) "close"; return RMClose})

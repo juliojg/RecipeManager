@@ -92,24 +92,35 @@ addRcp r = do s <- get
 --Elimina cierta cantidad de un ingrediente dado del inventario
 rmInv :: String -> Grams -> StateError ()
 rmInv i q = do s <- get
-               case rmInv' i q (inv s) of
-                Left err -> liftIO $ putStrLn ("No hay esa cantidad del ingrediente: " ++ i)
-                Right l  -> do put $ Env (file s) l (rcps s) (table s) 0 
-                               liftIO $ putStrLn ("Eliminado " ++ show q ++ " del ingrediente: " ++ i)         
+               ni <- rmInv' i q (inv s)  
+               put (Env (file s) ni (rcps s) (table s) 0)
+
+
+
 
 --La lista ya tiene agrupados ingredientes
-rmInv' :: String -> Grams -> [Ingr] -> Either Error [Ingr]
-rmInv' name q []     = Left IngrInsuficiente
+
+rmInv' :: String -> Grams -> [Ingr] -> StateError [Ingr]
+rmInv' name q []     = throw IngrInsuficiente
 rmInv' name q (x:xs) = if (iname x == name) 
                        then (case compare (quantity x) q of
                                                     LT -> rmInv' name (q - quantity x) xs 
-                                                    EQ -> Right xs
-                                                    GT -> Right $ Ingr name (nutritional_values x) (quantity x - q) (expire x) : xs)
-                       else either (Left) (\ns -> Right (x : ns)) (rmInv' name q xs)
+                                                    EQ -> return xs
+                                                    GT -> return $ Ingr name (nutritional_values x) (quantity x - q) (expire x) : xs)
+                       else do is <- (rmInv' name q xs)
+                               return (x : is)
 
 
 
 --Elimina todos los ingredientes usados en una receta, de haberlos.
+
+iEat :: String -> StateError ()
+iEat name = do s <- get
+               maybe (throw RecetaInexistente) 
+                     (mapM_ (\(n,q) -> rmInv n q) . map (\i -> (iname i, quantity i)) . ingrs) 
+                     (find (\r -> rname r == name) (rcps s))
+               
+
 
 
 
@@ -133,33 +144,42 @@ checkE today = do s <- get
 
 
 --Agrega un ingrediente a la tabla de valores
---VER DE ORDENARLOS ALFABETICAMENTE
---Si ya existe lo piso
+--VER DE ORDENARLOS ALFABETICAMENTE, HASH TABLE?
 addTable :: IngValues -> StateError ()
 addTable iv = do s <- get
-                 put (Env (file s) (inv s) (rcps s) (verifyPlace iv (table s)) 0 )
-                 liftIO $ putStrLn ("Datos de ingrediente " ++ show (tname iv) ++ " agregados")
+                 ns <- verifyPlace iv (table s)
+                 put (Env (file s) (inv s) (rcps s) ns 0 )
+                 
 
-verifyPlace :: IngValues -> [IngValues] -> [IngValues]
-verifyPlace iv []     = [iv]
+verifyPlace :: IngValues -> [IngValues] -> StateError [IngValues]
+verifyPlace iv []     = return [iv]
 verifyPlace iv (x:xs) = if (tname x == tname iv)
-                        then iv : xs
-                        else x : (verifyPlace iv xs)
-
+                        then throw IngrExistenteT
+                        else do ys <- (verifyPlace iv xs)
+                                return (x : ys)
 
 --Elimina un ingrediente de la tabla de valores
 rmTable :: String -> StateError ()
 rmTable name = do s <- get
-                  case rmTable' name (table s) of
-                    Left err -> liftIO $ putStrLn ("El igrediente no esta en la tabla: " ++ name)
-                    Right ns -> do put (Env (file s) (inv s) (rcps s) ns 0 )
-                                   liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " removidos") 
+                  nt <- rmTable' name (table s)
+                  total <- getTotal name (inv s)
+                  rmInv name total
+                  s' <- get
+                  put (Env (file s) (inv s') (rcps s) nt 0 )
+                  liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " removidos") 
 
-rmTable' :: String -> [IngValues] -> Either Error [IngValues]
-rmTable' name [] = Left IngrInexistente
-rmTable' name (x:xs) = if (tname x == name)
-                       then Right xs
-                       else either (Left) (\ns -> Right (x : ns)) (rmTable' name xs)
+
+rmTable' :: String -> [IngValues] -> StateError [IngValues]
+rmTable' name [] = throw IngrInexistente
+rmTable' name (x:xs) = if (tname x == name) then (return xs) else (rmTable' name xs)
+
+getTotal :: String -> [Ingr] -> StateError Grams
+getTotal name []     = return 0
+getTotal name (x:xs) = if name == iname x 
+                       then do q <- getTotal name xs 
+                               return (quantity x + q)  
+                       else getTotal name xs
+
 
 --Obtiene los valores nutricionales de un ingr en base a la tabla
 getNV :: [IngValues] -> String -> Grams -> StateError NutritionalValues
@@ -194,6 +214,7 @@ foldr sumNV accNV (map (\i -> getNV (table s) (iname i) (quantity i)) (ingrs r))
                    Left err -> throw IngrInexistente
                    Right nv -> return nv      
 -}
+
 --Crea un diccionario basico con las recetas y sus respectivos valores                    
 getRcpsNV :: [Recipe] -> StateError [(Recipe,NutritionalValues)]
 getRcpsNV [] = return []
@@ -210,15 +231,6 @@ accNV = NV 0 0 0
 
 sumNV :: NutritionalValues -> NutritionalValues -> NutritionalValues
 sumNV n1 n2 = (NV (carb n1 + carb n2) (prot n1 + prot n2) (fats n1 + fats n2))
-
-{-
-sumNV :: Either Error NutritionalValues -> Either Error NutritionalValues -> Either Error NutritionalValues
-sumNV n1 n2 = case n1 of 
-                Left err -> Left err
-                Right a1 -> case n2 of 
-                              Left err -> Left err
-                              Right a2 -> Right (NV (carb a1 + carb a2) (prot a1 + prot a2) (fats a1 + fats a2))
--}
 
 --Lista las comidas preparables con lo disponible
 

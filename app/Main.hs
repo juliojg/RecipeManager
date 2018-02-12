@@ -44,8 +44,8 @@ handleComm :: Comm -> StateError ()
 handleComm comm = 
     case comm of 
         Help        -> do liftIO showHelp; readevalprint
-        Load str    -> do loadRM str
-                          readevalprintRM 
+        Load str    -> do catchError (do loadRM str;readevalprintRM) (\er -> readevalprint)
+                           
         Quit        -> do liftIO $ putStrLn "Cerrando RecipeManger" 
                           return () 
         NewInv name -> do liftIO $ putStrLn ("Creado inventario: " ++ name)
@@ -75,19 +75,35 @@ handleRMComm :: RMComm -> StateError ()
 handleRMComm comm = 
     case comm of 
         RMSave      -> saveRM
+
         Add_rcp rcp -> catchError (addRcp rcp) (\e -> liftIO $ putStrLn $ show e ++ rname rcp)
+
         Add_ing ing -> catchError (addInv ing) (\e -> liftIO $ putStrLn $ show e ++ iname ing)
-        Rm (name,n) -> rmInv name n
+
+        Rm (name,n) -> catchError (do rmInv name n; liftIO $ putStrLn ("Eliminado " ++ show n ++ " del ingrediente: " ++ name)) 
+                                  (\e -> liftIO $ putStrLn $ show e ++ name ++ " " ++ show n)
+        
         Rm_rcp name -> rmRcp name
         CheckV      -> do date <- liftIO getCurrentDateTime; checkE date
-        IEat name   -> undefined
-        WTE cond -> do list <- whatToEat cond
-                       liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
-        WCDW names  -> undefined
+
+        IEat name   -> catchError (iEat name) (\e -> liftIO $ putStrLn "Le falta algun ingrediente")
+
+        WTE cond    -> do list <- whatToEat cond
+                          liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
+
         RMHelp      -> showRMHelp
+
         Display     -> do s <- get; liftIO $ putStrLn (show s)
-        AddTable iv -> addTable iv 
-        RmTable n -> rmTable n 
+
+        AddTable iv -> catchError (do addTable iv; liftIO $ putStrLn ("Datos de ingrediente " ++ show (tname iv) ++ " añadidos")) 
+                       (\e -> liftIO $ putStrLn $ show e ++ tname iv)
+        RmTable n   -> do liftIO $ putStrLn "Eliminar el ingrediente de la tabla lo borrara del inventario, ¿Esta seguro? y/n"
+                          s <- liftIO getLine
+                          case s of 
+                           "y"       -> catchError (rmTable n) ((\e -> liftIO $ putStrLn $ show e ++ n))  
+                           "n"       -> return ()
+                           otherwise -> handleRMComm (RmTable n)                            
+
         ImportTable file -> catchError (importRM file) (\_ -> return ())
 
 showHelp :: IO ()
@@ -129,3 +145,5 @@ check_save = do liftIO $ putStrLn "¿Quiere guardar el inventario? y/n"
                     "n"       -> do liftIO $ putStrLn "Inventario cerrado exitosamente"
                                     readevalprint
                     otherwise -> check_save
+
+

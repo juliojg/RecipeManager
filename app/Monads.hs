@@ -8,7 +8,13 @@ import Control.Monad (liftM, ap)
 import Data.List
 import Data.Ord
 
-data Error = RecetaInexistente | RecetaExistente | IngrInexistente | IngrInsuficiente | CargaFallida | IngrInexistenteT
+data Error = RecetaInexistente
+             | RecetaExistente 
+             | IngrInexistente 
+             | IngrInsuficiente 
+             | CargaFallida 
+             | IngrInexistenteT
+             | IngrExistenteT
 
 instance Show Error where
  show RecetaInexistente = "La siguiente receta no esta en la lista: "
@@ -17,7 +23,7 @@ instance Show Error where
  show IngrInexistenteT = "El siguiente ingrediente no esta en la tabla, ingreselo alli primero: "
  show IngrInsuficiente = "No se posee tanto del siguiente ingrediente: "
  show CargaFallida = "No se ha podido cargar el archivo: "
-
+ show IngrExistenteT = "El siguiente ingrediente ya esta en la tabla: "
 
 newtype StateError a = StateError { runStateError :: Env -> IO (Either Error (a, Env)) }
 
