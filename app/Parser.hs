@@ -14,8 +14,7 @@ import Data.Dates
 -----------------------
 -- Funcion para facilitar el testing del parser.
 totParser :: Parser a -> Parser a
-totParser p = do 
-                  whiteSpace lis
+totParser p = do  whiteSpace lis
                   t <- p
                   eof
                   return t
@@ -85,16 +84,14 @@ parserIngValues = do n <- identifier lis
                      return (IV n p v )
 
 parserNV :: Parser NutritionalValues -- carb prot fats, en ese orden
-parserNV = do c <- parserGrams
+parserNV = do spaces
+              c <- parserGrams
               spaces
               p <- parserGrams
               spaces
               f <- parserGrams
               return (NV c p f) 
  
-
-
-
 
 --Parser de fechas
 parserExpireDate :: Parser ExpireDate
@@ -156,12 +153,14 @@ parserCond :: Parser Cond
 parserCond =     try (do t <- identifier lis; return (With t)) 
              <|> (do {string "<";spaces; g <- parserGrams; try (do string "carb"; return (LessThan (Carb g)))
                                                                <|> (do string "prot"; return (LessThan (Prot g)))
-                                                               <|> (do string "grasas"; return (LessThan (Fats g)))})
+                                                               <|> (do string "grasas"; return (LessThan (Fats g)))
+                                                               <|> (do string "cal"; return (LessThanC g))})
              <|> (do {string ">";spaces; g <- parserGrams; try (do string "carb"; return (MoreThan (Carb g)))
                                                            <|> (do string "prot"; return (MoreThan (Prot g)))
-                                                           <|> (do string "grasas"; return (MoreThan (Fats g)))}) 
+                                                           <|> (do string "grasas"; return (MoreThan (Fats g)))
+                                                           <|> (do string "cal"; return (MoreThanC g))}) 
 
-
+{-
 parserConds :: Parser [Cond]
 parserConds = do string "con"
                  spaces
@@ -176,9 +175,31 @@ parserConds = do string "con"
                  case l of 
                     Nothing -> return (foldr (++) [] xs)
                     Just ys -> return (foldr (++) [] (xs ++ ys))
-                    
+-}                    
+
+parserConds :: Parser [Cond]
+parserConds = try (do xs <- wantedConds
+                      ys <- optionMaybe unwantedConds
+                      return (maybe xs (\c -> (xs ++ c)) ys)
+              <|> unwantedConds)
 
 
+
+wantedConds :: Parser [Cond]
+wantedConds = do string "con"
+                 spaces
+                 reservedOp lis "{"
+                 xs <- manyTill (sepBy1 parserCond (string ", ")) (reservedOp lis "}")
+                 return (foldr (++) [] xs)
+
+
+unwantedConds :: Parser [Cond]
+unwantedConds = do spaces
+                   string "sin"
+                   spaces
+                   reservedOp lis "{"
+                   ys <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (reservedOp lis "}")
+                   return (foldr (++) [] ys)
 
 
 
@@ -189,9 +210,9 @@ parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (
               <|> (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
               <|> (do{ (reserved lis) "rm_ing"; ing <- identifier lis;string "-"; n <- parserGrams; return (Rm (ing, n)) })
               <|> (do{ (reserved lis) "rm_rcp"; rcp_name <- identifier lis; return (Rm_rcp rcp_name) })
-              <|> (do{ (reserved lis) "check"; return CheckV })
+              <|> (do{ (reserved lis) "check";eof; return CheckV })
               <|> (do{ (reserved lis) "i_eat"; rcp_name <- identifier lis; return (IEat rcp_name)})
-              <|> (do{ (reserved lis) "need_food"; c <- optionMaybe (parserConds); return (WTE c) })
+              <|> (do{ (reserved lis) "need_food"; c <- optionMaybe (parserConds);eof; return (WTE c) })
               <|> (do{ (reserved lis) "help"; return RMHelp})
               <|> (do{ (reserved lis) "save"; return RMSave})
               <|> (do{ (reserved lis) "close"; return RMClose})

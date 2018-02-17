@@ -2,7 +2,7 @@ module Types where
 
 import Data.Dates
 import Data.Char
-
+import Data.List
 
 --AST
 
@@ -61,9 +61,9 @@ type Step = String
 
 type Grams = Double
 
-type KiloCalorie = Double
+type Calorie = Double
 
-data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag
+data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag | LessThanC Calorie| MoreThanC Calorie
 
 --The state that the program will carry
 
@@ -96,9 +96,9 @@ instance Show NutritionalValues where
     show = showNV
 
 showNV :: NutritionalValues -> String
-showNV nv = show (carb nv) ++ "               " ++
-            show (prot nv) ++ "        " ++
-            show (fats nv) ++ "  "
+showNV nv = "Carbohidratos: " ++ show (myRound (carb nv) 2) ++ " - " ++
+            "Proteinas: " ++ show (myRound (prot nv) 2) ++ " - " ++
+            "Grasas: " ++ show (myRound (fats nv) 2)
 
 
 
@@ -107,9 +107,8 @@ instance Show Env where
 
 showEnv :: Env -> String
 showEnv s = "Mostrando inventario: " ++ (file s) ++
-            "\n\nIngredientes:\n\n" ++
-            "Nombre   Cantidad   Carbohidratos   Proteinas   Lipidos   Vencimiento" ++
-            concat (map (('\n':) . show) (inv s)) ++
+            "\n\nIngredientes:" ++
+             concat (map (('\n':) . ('\n':) . show) (inv s)) ++
             "\n\nRecetas: " ++ "\n" ++
              concat (map (('\n':) . show ) (rcps s))            
 
@@ -120,32 +119,43 @@ instance Show Cond where
     show (MoreThan nv) = "masq"++show nv                
 
 instance Show MacroNutrient where
-    show (Carb g) = "carb"++show g
-    show (Prot g) = "prot"++show g
-    show (Fats g) = "fats"++show g
+    show (Carb g) = "carb "++show g
+    show (Prot g) = "prot "++show g
+    show (Fats g) = "fats "++show g
     
 
-
+myRound :: Grams -> Integer -> Grams
+myRound n digits = fromIntegral (round (n * (10 ^ digits))) / (10 ^ digits)
 
 instance Show Ingr where
  show = showIngr 
 
+
+showIngr :: Ingr -> String
+showIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ "\n" ++
+             maybe "" showNV (nutritional_values i) ++ "\n" ++
+             "Vencimiento: " ++ (maybe "" showExpireDate (expire i)))
+
+showSimpleIngr :: Ingr -> String
+showSimpleIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ " - Vencimiento: " ++ (maybe "" showExpireDate (expire i)))
+
 instance Show Recipe where
  show = showRcp 
 
+{-
+mapBut1 :: (a -> a) -> [a] -> [a]
+mapBut1 f []  = []
+mapBut1 f [x] = [x] 
+mapBut1 f (x:xs) = f x : mapBut1 f xs
+-}
 
 showRcp :: Recipe -> String
 showRcp r = "Nombre: " ++ (rname r) ++ "\n" ++ 
-            "Ingredientes: " ++ (concat (map ((++ ",") . showIngrRcp) (ingrs r))) ++ "\n" ++
-            "Pasos: " ++ "\n" ++ (concat (map ((\s -> ("+) " ++ s ++ "\n")) . show) (steps r))) ++ "\n"
+            "Ingredientes: " ++ intercalate ", " (map showIngrRcp (ingrs r)) ++ "\n" ++
+            "Pasos: " ++ "\n" ++ (concat (map ((\s -> ("+) " ++ s ++ "\n")) . show) (steps r))) ++
+            "Tags: " ++  (intercalate ", " ((maybe [] id (tags r)))) ++ "\n"
 
 
-
-
-showIngr :: Ingr -> String
-showIngr i = (iname i) ++ "    " ++ (show (quantity i) ++ "        " ++
-             maybe "    " showNV (nutritional_values i) ++ "    " ++
-             (maybe "    " showExpireDate (expire i)))
 
 showIngrRcp :: Ingr -> String
 showIngrRcp i = (iname i) ++ " " ++ (show (quantity i)) 

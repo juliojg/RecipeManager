@@ -68,8 +68,8 @@ searchPlace i (x:xs) = if (iname i == iname x)
                                    then (Ingr (iname i) (nutritional_values i) (quantity i + quantity x) (expire i)):xs 
                                    else i:x:xs) 
                              else x : (searchPlace' i xs))  
-                       else x : keepTrying
-                       where keepTrying = (searchPlace i xs)
+                       else x : (searchPlace i xs)
+                      
 
 searchPlace' :: Ingr -> [Ingr] -> [Ingr]
 searchPlace' i [] = [i] 
@@ -129,7 +129,7 @@ rmRcp :: String -> StateError ()
 rmRcp name = do s <- get
                 let nr = filter (\r -> rname r /= name) (rcps s) in
                     if nr == rcps s 
-                    then liftIO $ putStrLn ("La receta " ++ name ++ " no esta en la lista:")
+                    then liftIO $ putStrLn ("La siguiente receta no esta en la lista: " ++ name )
                     else do put (Env (file s) (inv s) nr (table s) 0) 
                             liftIO $ putStrLn ("Receta eliminada: " ++ name)
 
@@ -138,8 +138,10 @@ rmRcp name = do s <- get
 --Revisa vencimientos
 checkE :: ExpireDate -> StateError ()
 checkE today = do s <- get
-                  let res = show (filter (maybe True (\e -> today > e) . expire) (inv s))
-                  liftIO $ putStrLn ("Ingredientes vencidos: " ++ res)
+                  let res =  intercalate "\n" ((map showSimpleIngr (filter (maybe True (\e -> today > e) . expire) (inv s))))
+                  case res of 
+                    [] -> liftIO $ putStrLn ("Ningun ingrediente esta vencido")
+                    xs -> liftIO $ putStrLn ("Ingredientes vencidos:\n" ++ xs)
                   
 
 
@@ -166,7 +168,7 @@ rmTable name = do s <- get
                   rmInv name total
                   s' <- get
                   put (Env (file s) (inv s') (rcps s) nt 0 )
-                  liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " removidos") 
+                  liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " eliminados") 
 
 
 rmTable' :: String -> [IngValues] -> StateError [IngValues]
@@ -198,7 +200,7 @@ threeRule x y z = (z * y) / x
 {-The Atwater system uses the average values of 4 Kcal/g for protein,
  4 Kcal/g for carbohydrate, and 9 Kcal/g for fat. -}
 
-getCalories :: NutritionalValues -> KiloCalorie
+getCalories :: NutritionalValues -> Calorie
 getCalories nv = (carb nv) * 4.0 + (prot nv) * 4.0 + (fats nv) * 9.0
 
 
@@ -257,6 +259,8 @@ check_cond (LessThan c) (r,nv) = case c of Carb g -> carb nv <= g
 check_cond (MoreThan c) (r,nv) = case c of Carb g -> (carb nv) >= g
                                            Prot g -> (prot nv) >= g
                                            Fats g -> (fats nv) >= g
+check_cond (MoreThanC c) (r,nv)= getCalories nv >= c
+check_cond (LessThanC c) (r,nv)= getCalories nv <= c
 check_cond (With t)   (r,nv)  = elem t (maybe [] id (tags r))
 check_cond (Without t) (r,nv) = not (elem t (maybe [] id (tags r)))  
 

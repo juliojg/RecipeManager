@@ -35,7 +35,8 @@ readevalprint = do line <- liftIO $ readline prompt
                      Nothing -> liftIO $ putStrLn "Escriba un comando (puede usar \"help\" para ver los disponibles)"
                      Just xs -> do liftIO $ addHistory xs
                                    case (parse (parseComm) "" xs) of
-                                     Left er      -> do liftIO $ putStrLn "Comando mal ingresado"; readevalprint
+                                     Left er      -> do liftIO $ wrongComm
+                                                        readevalprint
                                      Right comm   -> handleComm comm 
                                                       
  
@@ -60,7 +61,7 @@ readevalprintRM = do line <- liftIO $ readline prompt
                        Nothing -> do liftIO $ putStrLn "Saliendo"; return ()
                        Just xs -> do liftIO $ addHistory xs
                                      case (parse (parseRMComm) "" xs) of
-                                       Left er      -> do liftIO $ putStrLn "Mal ingresado" ; readevalprintRM
+                                       Left er      -> do liftIO wrongComm ; readevalprintRM
                                        Right RMClose -> do s <- get
                                                            case flag_saved s of
                                                              0 -> check_save
@@ -120,20 +121,22 @@ showRMHelp :: StateError ()
 showRMHelp = do liftIO $ setCursorPosition 0 0
                 liftIO $ clearScreen
                 liftIO $ putStrLn "Lista de comandos disponibles:"
-                liftIO $ putStrLn "add_ing  nombre-cantidad-dd/mm/aa           : Añadir un ingrediente al inventario"
-                liftIO $ putStrLn "rm_ing   nombre-cantidad                    : Eliminar un ingr del inventario"
-                liftIO $ putStrLn "add_t    nombre-cantidad-carb prot grasas   : Añadir un ingrediente a la tabla"
-                liftIO $ putStrLn "rm_t     nombre                             : Eliminar un ingrediente al inventario"
+                liftIO $ putStrLn "add_ing nombre-cantidad-dd/mm/aa            : Añadir ingrediente al inventario"
+                liftIO $ putStrLn "rm_ing  nombre-cantidad                     : Eliminar ingrediente del inventario"
+                liftIO $ putStrLn "add_t   nombre-cantidad-carb prot grasas    : Añadir ingrediente a la tabla"
+                liftIO $ putStrLn "rm_t    nombre                              : Eliminar ingrediente de la tabla"
                 liftIO $ putStrLn ("add_rcp  nombre -i ings -p pasos -t tags -f : Añadir receta a la lista" ++ "\n" ++
                                    "(ings : ing1[;ing2] | pasos : paso1;[paso2;] | tags : tag1;[tag2;])")
-                liftIO $ putStrLn "rm_rcp   nombre                             : Eliminar una receta del inventario"
-                liftIO $ putStrLn "check  S                                     : Verifica vencimientos"                
+                liftIO $ putStrLn "rm_rcp  nombre                              : Eliminar receta del inventario"
+                liftIO $ putStrLn "check                                       : Verifica vencimientos"                
                 liftIO $ putStrLn "need_food [con {tag, <n carb}][sin {tag1,}] : Mostrar comidas preparables"                
-                liftIO $ putStrLn "display                                     : Mostrar el inventario"
-                liftIO $ putStrLn "save                                        : Guardar el inventario"
+                liftIO $ putStrLn "display                                     : Mostrar inventario"
+                liftIO $ putStrLn "save                                        : Guardar inventario"
                 liftIO $ putStrLn "close                                       : Cerrar inventario"                 
                 liftIO $ putStrLn "help                                        : Mostrar ayuda" 
 
+wrongComm :: IO ()
+wrongComm = putStrLn "Comando mal ingresado (\"help\" muestra los disponibles)"
 
 check_save :: StateError ()
 check_save = do liftIO $ putStrLn "¿Quiere guardar el inventario? y/n"
