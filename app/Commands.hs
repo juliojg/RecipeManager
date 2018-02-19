@@ -5,18 +5,21 @@ import Monads
 import Pretty
 import Parser
 
-import Text.ParserCombinators.Parsec 
-import Text.Parsec.Token
-import Text.Parsec.Language (emptyDef)
-import Text.Parsec.Char
+import Data.List
+import Data.Dates
+import Data.Ord
 
+import Text.ParserCombinators.Parsec 
 import Text.PrettyPrint.HughesPJ (render)
-import Control.Exception (catch,IOException)
+--import Text.Parsec.Token
+--import Text.Parsec.Language (emptyDef)
+--import Text.Parsec.Char
+
 import Control.Monad.IO.Class
 import Control.Applicative
+import Control.Exception (catch,IOException)
 import Control.Monad (liftM, ap)
-import Data.List
-import Data.Ord
+
 import System.Directory (createDirectoryIfMissing)
 
 --Carga un estado de un archivo del directorio /save donde se ejecuto 
@@ -37,7 +40,7 @@ saveRM = do s <- get
             liftIO $ createDirectoryIfMissing False "save"
             liftIO $ writeFile ("save/" ++ (file s) ++ ".rcpm") (render (printEnv s))
             liftIO $ putStrLn ("Guardado archivo: " ++ (file s) ++ ".rcpm")             
-            put (Env (file s) (inv s) (rcps s) (table s) 1)
+            put (Env (file s) (inv s) (rcps s) (table s) (logC s) 1)
 
 --Importa la tabla de valores de otro inventario al actual
 importRM :: String -> StateError ()
@@ -55,7 +58,7 @@ addInv :: Ingr -> StateError ()
 addInv i = do s <- get
               nv <- getNV (table s) (iname i) (quantity i)
               let ni = Ingr (iname i) (Just nv) (quantity i) (expire i) in 
-               put (Env (file s) (searchPlace ni (inv s)) (rcps s) (table s) 0)  
+               put (Env (file s) (searchPlace ni (inv s)) (rcps s) (table s) (logC s) 0)  
               liftIO $ putStrLn ("Ingrediente agregado: " ++ iname i)
 
 
@@ -83,7 +86,7 @@ searchPlace' i (x:xs) = if (iname i == iname x)
 addRcp :: Recipe -> StateError ()
 addRcp r = do s <- get
               if (filter (\n -> rname r == rname n) (rcps s) == [])
-              then put (Env (file s) (inv s) (r:(rcps s)) (table s) 0)
+              then put (Env (file s) (inv s) (r:(rcps s)) (table s) (logC s) 0)
               else throw RecetaExistente
               liftIO $ putStrLn ("Receta agregada: " ++ rname r)
 
@@ -93,7 +96,7 @@ addRcp r = do s <- get
 rmInv :: String -> Grams -> StateError ()
 rmInv i q = do s <- get
                ni <- rmInv' i q (inv s)  
-               put (Env (file s) ni (rcps s) (table s) 0)
+               put (Env (file s) ni (rcps s) (table s) (logC s) 0)
 
 
 
@@ -116,10 +119,17 @@ rmInv' name q (x:xs) = if (iname x == name)
 
 iEat :: String -> StateError ()
 iEat name = do s <- get
+               date <- liftIO getCurrentDateTime
+               let r = (find (\r -> rname r == name) (rcps s)) 
+               rnv <- maybe (throw RecetaInexistente) getRcpNV r
                maybe (throw RecetaInexistente) 
                      (mapM_ (\(n,q) -> rmInv n q) . map (\i -> (iname i, quantity i)) . ingrs) 
-                     (find (\r -> rname r == name) (rcps s))
-               
+                     r
+               s' <- get
+               put (Env (file s') (inv s') (rcps s') (table s') (uLog (logC s') date rnv) (flag_saved s'))
+               liftIO $ putStrLn (show (getCalories rnv) ++ " calorias agregadas al log")   
+
+                
 
 
 
@@ -130,19 +140,20 @@ rmRcp name = do s <- get
                 let nr = filter (\r -> rname r /= name) (rcps s) in
                     if nr == rcps s 
                     then liftIO $ putStrLn ("La siguiente receta no esta en la lista: " ++ name )
-                    else do put (Env (file s) (inv s) nr (table s) 0) 
+                    else do put (Env (file s) (inv s) nr (table s) (logC s) 0) 
                             liftIO $ putStrLn ("Receta eliminada: " ++ name)
 
 
 
 --Revisa vencimientos
-checkE :: ExpireDate -> StateError ()
-checkE today = do s <- get
-                  let res =  intercalate "\n" ((map showSimpleIngr (filter (maybe True (\e -> today > e) . expire) (inv s))))
-                  case res of 
-                    [] -> liftIO $ putStrLn ("Ningun ingrediente esta vencido")
-                    xs -> liftIO $ putStrLn ("Ingredientes vencidos:\n" ++ xs)
-                  
+checkE :: StateError ()
+checkE = do s <- get
+            today <- liftIO getCurrentDateTime
+            let res =  intercalate "\n" ((map showSimpleIngr (filter (maybe True (\e -> today > e) . expire) (inv s))))
+            case res of 
+              [] -> liftIO $ putStrLn ("Ningun ingrediente esta vencido")
+              xs -> liftIO $ putStrLn ("Ingredientes vencidos:\n" ++ xs)
+              
 
 
 --Agrega un ingrediente a la tabla de valores
@@ -150,7 +161,7 @@ checkE today = do s <- get
 addTable :: IngValues -> StateError ()
 addTable iv = do s <- get
                  ns <- verifyPlace iv (table s)
-                 put (Env (file s) (inv s) (rcps s) ns 0 )
+                 put (Env (file s) (inv s) (rcps s) ns (logC s) 0 )
                  
 
 verifyPlace :: IngValues -> [IngValues] -> StateError [IngValues]
@@ -167,7 +178,7 @@ rmTable name = do s <- get
                   total <- getTotal name (inv s)
                   rmInv name total
                   s' <- get
-                  put (Env (file s) (inv s') (rcps s) nt 0 )
+                  put (Env (file s) (inv s') (rcps s) nt (logC s) 0 )
                   liftIO $ putStrLn ("Datos de ingrediente " ++ name ++ " eliminados") 
 
 
@@ -271,3 +282,17 @@ preparable_with inv r = foldr (&&) True (map (check_if_have_in inv) (ingrs r))
 --Suma lo disponible en el inventario y se fija si alcanza para lo que pide la receta
 check_if_have_in :: [Ingr] -> Ingr -> Bool 
 check_if_have_in inv n = (foldr (+) 0 (map (\i -> if iname i == iname n then quantity i else 0) inv)) >= (quantity n)
+
+uLog :: [Entry] -> ExpireDate -> NutritionalValues -> [Entry]
+uLog []     e nv = [Entry e (getCalories nv)]
+uLog (x:xs) e nv = let rnv = (getCalories nv) in 
+                    if isSameDay (date x) e then (Entry e (total x + rnv)):xs else uLog xs e nv 
+
+isSameDay :: ExpireDate -> ExpireDate -> Bool
+isSameDay e1 e2 = day e1 == day e2 && month e1 == month e2 && year e1 == year e2
+
+
+
+
+
+

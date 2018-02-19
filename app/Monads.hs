@@ -5,8 +5,8 @@ import Types
 import Control.Monad.IO.Class
 import Control.Applicative
 import Control.Monad (liftM, ap)
-import Data.List
-import Data.Ord
+--import Data.List
+--import Data.Ord
 
 data Error = RecetaInexistente
              | RecetaExistente 

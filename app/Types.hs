@@ -33,19 +33,18 @@ data Ingr = Ingr { iname :: String,
                  }
 
 
-data IngValues = IV {tname   :: String,
-                     portion :: Grams,
-                     values  :: NutritionalValues}
-
-
-
 data Recipe = Rcp { rname :: String,
                     ingrs :: [Ingr],
                     steps :: [Step],  
                     tags  :: Maybe [Tag]
                   }
 
-type Tag = String --Desayuno / Fria / etc. 
+
+data IngValues = IV {tname   :: String,
+                     portion :: Grams,
+                     values  :: NutritionalValues}
+
+
 
 data NutritionalValues = NV {carb  :: Grams,
                              prot  :: Grams,
@@ -53,9 +52,9 @@ data NutritionalValues = NV {carb  :: Grams,
 
 data MacroNutrient = Carb Grams | Prot Grams | Fats Grams
 
+data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag | LessThanC Calorie| MoreThanC Calorie
 
 type ExpireDate = DateTime 
-
 
 type Step = String
 
@@ -63,15 +62,19 @@ type Grams = Double
 
 type Calorie = Double
 
-data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag | LessThanC Calorie| MoreThanC Calorie
+type Tag = String --Desayuno / Fria / etc. 
+
+data Entry = Entry {date :: DateTime, total :: Calorie}
 
 --The state that the program will carry
 
 data Env = Env {file  :: String,
                 inv   :: [Ingr],
                 rcps  :: [Recipe],
-                table :: [IngValues], 
+                table :: [IngValues],
+                logC   :: [Entry], 
                 flag_saved :: Int}
+
 
 
 --Eq
@@ -80,11 +83,10 @@ instance Eq Recipe where
     r1 == r2 = (rname r1 == rname r2)
 
 
--- Show
+--Show
 
 showExpireDate :: ExpireDate -> String
 showExpireDate e = (show (day e)) ++ "/" ++ (show (month e)) ++ "/" ++ (show (year e))
-
 
 instance Show IngValues where
     show = showIV
@@ -100,8 +102,6 @@ showNV nv = "Carbohidratos: " ++ show (myRound (carb nv) 2) ++ " - " ++
             "Proteinas: " ++ show (myRound (prot nv) 2) ++ " - " ++
             "Grasas: " ++ show (myRound (fats nv) 2)
 
-
-
 instance Show Env where
     show = showEnv
 
@@ -110,7 +110,9 @@ showEnv s = "Mostrando inventario: " ++ (file s) ++
             "\n\nIngredientes:" ++
              concat (map (('\n':) . ('\n':) . show) (inv s)) ++
             "\n\nRecetas: " ++ "\n" ++
-             concat (map (('\n':) . show ) (rcps s))            
+             concat (map (('\n':) . show ) (rcps s)) ++            
+            "\n\nLog: " ++ "\n" ++
+             concat (map (('\n':) . show ) (logC s))            
 
 instance Show Cond where
     show (With t) = "si"++show t
@@ -124,12 +126,8 @@ instance Show MacroNutrient where
     show (Fats g) = "fats "++show g
     
 
-myRound :: Grams -> Integer -> Grams
-myRound n digits = fromIntegral (round (n * (10 ^ digits))) / (10 ^ digits)
-
 instance Show Ingr where
  show = showIngr 
-
 
 showIngr :: Ingr -> String
 showIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ "\n" ++
@@ -142,13 +140,6 @@ showSimpleIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ " - Ven
 instance Show Recipe where
  show = showRcp 
 
-{-
-mapBut1 :: (a -> a) -> [a] -> [a]
-mapBut1 f []  = []
-mapBut1 f [x] = [x] 
-mapBut1 f (x:xs) = f x : mapBut1 f xs
--}
-
 showRcp :: Recipe -> String
 showRcp r = "Nombre: " ++ (rname r) ++ "\n" ++ 
             "Ingredientes: " ++ intercalate ", " (map showIngrRcp (ingrs r)) ++ "\n" ++
@@ -156,6 +147,18 @@ showRcp r = "Nombre: " ++ (rname r) ++ "\n" ++
             "Tags: " ++  (intercalate ", " ((maybe [] id (tags r)))) ++ "\n"
 
 
-
 showIngrRcp :: Ingr -> String
 showIngrRcp i = (iname i) ++ " " ++ (show (quantity i)) 
+
+
+instance Show Entry where
+    show = showEntry
+
+showEntry :: Entry -> String
+showEntry e = "El " ++ showExpireDate (date e) ++ " se ingirieron " ++ show (total e) ++ " calorias"
+
+--Aux
+
+myRound :: Grams -> Integer -> Grams
+myRound n digits = fromIntegral (round (n * (10 ^ digits))) / (10 ^ digits)
+

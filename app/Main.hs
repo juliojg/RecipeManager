@@ -5,18 +5,20 @@ import Pretty
 import Types
 import Monads
 import Commands
-import System.Console.Readline
-import System.Console.ANSI (setCursorPosition, clearScreen)
 
 import Data.Dates
 
 import Text.ParserCombinators.Parsec 
-import Text.Parsec.Token
-import Text.Parsec.Language (emptyDef)
+--import Text.Parsec.Token
+--import Text.Parsec.Language (emptyDef)
 import Text.PrettyPrint.HughesPJ (render)
 
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
+
+import System.Console.Readline
+import System.Console.ANSI (setCursorPosition, clearScreen)
+
 
 prompt :: String
 prompt = "RM> "
@@ -26,7 +28,7 @@ main :: IO ()
 main = do setCursorPosition 0 0
           clearScreen
           putStrLn "Bienvenido a RecipeManager, cargue o cree un inventario (escriba \"help\" para ver la ayuda)"
-          void $ runStateError readevalprint (Env [] [] [] [] 0)
+          void $ runStateError readevalprint (Env [] [] [] [] [] 0)
 
 
 readevalprint :: StateError ()
@@ -52,7 +54,7 @@ handleComm comm =
         NewInv name -> do liftIO $ putStrLn ("Creado inventario: " ++ name)
                           liftIO $ putStrLn ("Ahora esta en el inventario: " ++ name ++ 
                                             ", vea los comados de inventario con \"help\"") 
-                          put (Env name [] [] [] 0)
+                          put (Env name [] [] [] [] 0)
                           readevalprintRM
 
 readevalprintRM :: StateError ()
@@ -85,10 +87,11 @@ handleRMComm comm =
                                   (\e -> liftIO $ putStrLn $ show e ++ name ++ " " ++ show n)
         
         Rm_rcp name -> rmRcp name
-        CheckV      -> do date <- liftIO getCurrentDateTime; checkE date
+        CheckV      -> checkE
 
-        IEat name   -> catchError (iEat name) (\e -> liftIO $ putStrLn "Le falta algun ingrediente")
-
+        IEat name   -> do catchError (iEat name) (\e -> case e of 
+                                                            IngrInsuficiente -> liftIO $ putStrLn "Le falta algun ingrediente"
+                                                            RecetaInexistente -> liftIO $ putStrLn "Receta no existente")
         WTE cond    -> do list <- whatToEat cond
                           liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
 
@@ -98,6 +101,7 @@ handleRMComm comm =
 
         AddTable iv -> catchError (do addTable iv; liftIO $ putStrLn ("Datos de ingrediente " ++ show (tname iv) ++ " añadidos")) 
                        (\e -> liftIO $ putStrLn $ show e ++ tname iv)
+
         RmTable n   -> do liftIO $ putStrLn "Eliminar el ingrediente de la tabla lo borrara del inventario, ¿Esta seguro? y/n"
                           s <- liftIO getLine
                           case s of 
@@ -106,6 +110,7 @@ handleRMComm comm =
                            otherwise -> handleRMComm (RmTable n)                            
 
         ImportTable file -> catchError (importRM file) (\_ -> return ())
+
 
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0

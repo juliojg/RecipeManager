@@ -1,14 +1,16 @@
 module Parser where
 
-import Text.ParserCombinators.Parsec 
-import Text.Parsec.Token
-import Text.Parsec.Language (emptyDef)
-import Text.Parsec.Char
-import Text.PrettyPrint.HughesPJ (render)
-
 import Pretty
 import Types
 import Data.Dates
+
+
+import Text.ParserCombinators.Parsec 
+import Text.Parsec.Token
+import Text.Parsec.Language (emptyDef)
+--import Text.Parsec.Char
+import Text.PrettyPrint.HughesPJ (render)
+
 
 
 -----------------------
@@ -40,8 +42,17 @@ parserEnv = do name <- identifier lis
                string "|Recetas:|"
                rcps  <- sepEndBy (parserRcp) (string "%")
                string "|Tabla:|"
-               t     <- sepEndBy (parserIngValues) (string "|")
-               return (Env name ingrs rcps t 1)
+               t     <- sepEndBy (parserIngValues) (string "@")
+               string "|Log:|"
+               l     <- sepEndBy (parserEntry) (string "|")
+               return (Env name ingrs rcps t l 1)
+
+
+parserEntry :: Parser Entry
+parserEntry = do e <- parserExpireDate
+                 symbol lis "-" 
+                 w  <- parserGrams
+                 return (Entry e w)
 
 
 parserAddedIng :: Parser Ingr
@@ -53,8 +64,9 @@ parserAddedIng = do n  <- identifier lis
                     e  <- parserExpireDate                    
                     return (Ingr n (Just nv) w (Just e) )
 
+
+
 --Parser de tabla de valores de un inventario
---Parser de archivos guardados
 parserTable :: Parser [IngValues]
 parserTable = do identifier lis
                  string "|Ingredientes:|"
@@ -82,6 +94,7 @@ parserIngValues = do n <- identifier lis
                      string "-"
                      v <- parserNV
                      return (IV n p v )
+
 
 parserNV :: Parser NutritionalValues -- carb prot fats, en ese orden
 parserNV = do spaces
@@ -119,10 +132,6 @@ parserRcp = do name <- identifier lis
                ts    <- optionMaybe (manyTill parserTag (parserEnd "-f"))
                return (Rcp name (foldr (++) [] ingrs) (steps) ts)  
 
---add_rcp Pizza -i Queso-20;Salsa-10 -p paso1;paso2; -t Fria; -f
-
-
-
 
 parserEnd :: String -> Parser String
 parserEnd end = do {spaces ; string end}
@@ -148,7 +157,6 @@ parserGrams = try (float lis) <|> (do {x <- (natural lis); return (fromIntegral 
 
 --Parser de condiciones 
 
-
 parserCond :: Parser Cond
 parserCond =     try (do t <- identifier lis; return (With t)) 
              <|> (do {string "<";spaces; g <- parserGrams; try (do string "carb"; return (LessThan (Carb g)))
@@ -160,22 +168,6 @@ parserCond =     try (do t <- identifier lis; return (With t))
                                                            <|> (do string "grasas"; return (MoreThan (Fats g)))
                                                            <|> (do string "cal"; return (MoreThanC g))}) 
 
-{-
-parserConds :: Parser [Cond]
-parserConds = do string "con"
-                 spaces
-                 reservedOp lis "{"
-                 xs <- manyTill (sepBy1 parserCond (string ", ")) (reservedOp lis "}")
-                 l <- optionMaybe (do spaces
-                                      string "sin"
-                                      spaces
-                                      reservedOp lis "{"
-                                      a <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (reservedOp lis "}")
-                                      return a)
-                 case l of 
-                    Nothing -> return (foldr (++) [] xs)
-                    Just ys -> return (foldr (++) [] (xs ++ ys))
--}                    
 
 parserConds :: Parser [Cond]
 parserConds = try (do xs <- wantedConds
@@ -200,8 +192,6 @@ unwantedConds = do spaces
                    reservedOp lis "{"
                    ys <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (reservedOp lis "}")
                    return (foldr (++) [] ys)
-
-
 
 
 --Parser comandos

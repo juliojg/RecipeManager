@@ -1,12 +1,10 @@
 module Pretty where
 
-import Text.PrettyPrint.HughesPJ
-import Data.Dates
 import Types
 
-         
---inv1|Ingredientes:|Queso-20-11/12/2019#Salsa-20-11/12/2017#Harina-10-11/12/2018|Recetas:|MilanesaNapolitana...Queso-10;Salsa-7;Milanesa-1...Paso1;Paso2;Paso3;:f|Pizza...Queso-10;Salsa-7;Harina-15...Paso1;Paso2;Paso3;:f
+import Data.Dates
 
+import Text.PrettyPrint.HughesPJ
 
 
 printEnv :: Env -> Doc
@@ -18,12 +16,16 @@ printEnv s = text (file s) <>
              text "Recetas:|" <>
              printList "%" (rcps s) printRcp <>
              text "|Tabla:|" <>
-             printList "|" (table s) printIV
+             printList "@" (table s) printIV <>
+             text "|Log:|" <>
+             printList "|" (logC s) printEntry
 
-{-
-inv1|Ingredientes:|Queso-10.0-6.0 11.5 2.0-11/12/2019#Salsa-10.0-0.2 0.2 0.2-11/12/2019|Recetas:|MilanesaNap-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f%Pizza-iQueso-20.0;Salsa-10.0-ppaso1;paso2;-tCaliente;-f|Tabla:|Queso-20.0-12.0 23.0 4.0|Salsa-100.0-2.0 2.0 2.0;
--}
 
+printEntry :: Entry -> Doc
+printEntry e = text "-" <>
+               printExpire (date e) <>
+               text "-" <>
+               double (total e)
 
 printIV :: IngValues -> Doc
 printIV iv = text (tname iv) <>
@@ -75,4 +77,3 @@ printRcp r = text (rname r) <>
              printList ";" (steps r) (\p -> text p) <>
              text "-t" <>
              maybe (text "-f") (\xs -> ((printList ";"  xs (\a-> text a)) <> text "-f")) (tags r) 
-             
