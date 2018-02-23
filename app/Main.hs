@@ -7,10 +7,9 @@ import Monads
 import Commands
 
 import Data.Dates
+import Data.List
 
 import Text.ParserCombinators.Parsec 
---import Text.Parsec.Token
---import Text.Parsec.Language (emptyDef)
 import Text.PrettyPrint.HughesPJ (render)
 
 import Control.Monad (void)
@@ -47,7 +46,7 @@ handleComm :: Comm -> StateError ()
 handleComm comm = 
     case comm of 
         Help        -> do liftIO showHelp; readevalprint
-        Load str    -> do catchError (do loadRM str;readevalprintRM) (\er -> readevalprint)
+        Load str    -> do catchError (do loadRM str;readevalprintRM) (\er -> do liftIO $ putStrLn "Archivo dañado"; readevalprint)
                            
         Quit        -> do liftIO $ putStrLn "Cerrando RecipeManger" 
                           return () 
@@ -87,13 +86,15 @@ handleRMComm comm =
                                   (\e -> liftIO $ putStrLn $ show e ++ name ++ " " ++ show n)
         
         Rm_rcp name -> rmRcp name
+
         CheckV      -> checkE
 
         IEat name   -> do catchError (iEat name) (\e -> case e of 
                                                             IngrInsuficiente -> liftIO $ putStrLn "Le falta algun ingrediente"
-                                                            RecetaInexistente -> liftIO $ putStrLn "Receta no existente")
-        WTE cond    -> do list <- whatToEat cond
-                          liftIO $ putStrLn ("Puede preparar: " ++ foldr (++) "" (map (\r -> (rname r) ++ " ") list) )
+                                                            RecetaInexistente -> liftIO $ putStrLn "Receta no existente"
+                                                            IngrInexistenteT -> liftIO $ putStrLn "Algun ingrediente no esta en la tabla")
+        WTE cond    -> do l <- whatToEat cond
+                          liftIO $ putStrLn ("Puede preparar: " ++ (intercalate ", " (map (\r -> rname r) l)) )
 
         RMHelp      -> showRMHelp
 
@@ -111,7 +112,10 @@ handleRMComm comm =
 
         ImportTable file -> catchError (importRM file) (\_ -> return ())
 
-
+        ShowT            -> do s <- get 
+                               liftIO $ putStrLn "Tabla de valores:"          
+                               liftIO $ (mapM_ (putStrLn . show) (table s))
+                               
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0
               clearScreen
@@ -134,11 +138,12 @@ showRMHelp = do liftIO $ setCursorPosition 0 0
                                    "(ings : ing1[;ing2] | pasos : paso1;[paso2;] | tags : tag1;[tag2;])")
                 liftIO $ putStrLn "rm_rcp  nombre                              : Eliminar receta del inventario"
                 liftIO $ putStrLn "check                                       : Verifica vencimientos"                
-                liftIO $ putStrLn "need_food [con {tag, <n carb}][sin {tag1,}] : Mostrar comidas preparables"                
+                liftIO $ putStrLn "need_food [+{tag, <n carb, ...}][-{tag,...}]: Mostrar comidas preparables"                
                 liftIO $ putStrLn "display                                     : Mostrar inventario"
                 liftIO $ putStrLn "save                                        : Guardar inventario"
                 liftIO $ putStrLn "close                                       : Cerrar inventario"                 
                 liftIO $ putStrLn "help                                        : Mostrar ayuda" 
+                liftIO $ putStrLn "display_t                                   : Muestra la tabla de valores nutricionales"
 
 wrongComm :: IO ()
 wrongComm = putStrLn "Comando mal ingresado (\"help\" muestra los disponibles)"

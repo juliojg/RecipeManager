@@ -39,7 +39,6 @@ printIngr :: Ingr -> Doc
 printIngr i = text (iname i) <>
               text "-" <> 
               double (quantity i) <>
-              maybe empty (\nv -> text "-" <> printNV nv) (nutritional_values i) <>     
               maybe empty (\e -> (text "-" <> printExpire e)) (expire i)              
 
 

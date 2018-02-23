@@ -5,8 +5,6 @@ import Types
 import Control.Monad.IO.Class
 import Control.Applicative
 import Control.Monad (liftM, ap)
---import Data.List
---import Data.Ord
 
 data Error = RecetaInexistente
              | RecetaExistente 
@@ -46,12 +44,12 @@ class Monad m => MonadState m where
     get :: m Env
     put :: Env -> m ()
 
-instance MonadState StateError where --ver si son necesarios, considerando add_inv, etc.
+instance MonadState StateError where
     get = StateError (\s -> return (Right (s,s)))
     put s' = StateError (\s -> return (Right ((), s'))) 
 
 
---Clase para representar monadas que lanzan errores 
+--Class for represent the monads that throw errors.
 class Monad m => MonadError m where
     throw :: Error -> m a
     catchError :: m a -> (Error -> m a) -> m a
@@ -63,9 +61,7 @@ instance MonadError StateError where
                                                   Left err -> runStateError (handler err) s
                                                   Right (v,s') -> runStateError (return v) s')
 
-
-
-
+--To use IO actions
 instance MonadIO StateError where
     liftIO io = StateError (\s -> do x <- io
                                      return (Right (x, s)))

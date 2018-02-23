@@ -8,20 +8,12 @@ import Data.Dates
 import Text.ParserCombinators.Parsec 
 import Text.Parsec.Token
 import Text.Parsec.Language (emptyDef)
---import Text.Parsec.Char
 import Text.PrettyPrint.HughesPJ (render)
 
 
 
------------------------
--- Funcion para facilitar el testing del parser.
-totParser :: Parser a -> Parser a
-totParser p = do  whiteSpace lis
-                  t <- p
-                  eof
-                  return t
 
--- Analizador de Tokens
+-- Tokens
 lis :: TokenParser u
 lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , commentEnd      = "*/"
@@ -34,11 +26,11 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                                         "add_t", "rm_t"]
                                   })
 
---Parser de archivos guardados
+--Saved files
 parserEnv :: Parser Env
 parserEnv = do name <- identifier lis
                string "|Ingredientes:|"
-               ingrs <- sepEndBy (parserAddedIng) (string "#")
+               ingrs <- sepEndBy (parserIng) (string "#")
                string "|Recetas:|"
                rcps  <- sepEndBy (parserRcp) (string "%")
                string "|Tabla:|"
@@ -59,14 +51,12 @@ parserAddedIng :: Parser Ingr
 parserAddedIng = do n  <- identifier lis
                     symbol lis "-" 
                     w  <- parserGrams
-                    symbol lis "-"            
-                    nv <- parserNV
                     e  <- parserExpireDate                    
-                    return (Ingr n (Just nv) w (Just e) )
+                    return (Ingr n {-(Just nv)-} w (Just e) )
 
 
 
---Parser de tabla de valores de un inventario
+--Table
 parserTable :: Parser [IngValues]
 parserTable = do identifier lis
                  string "|Ingredientes:|"
@@ -74,18 +64,20 @@ parserTable = do identifier lis
                  string "|Recetas:|"
                  sepEndBy (parserRcp) (string "%")
                  string "|Tabla:|"
-                 t     <- sepEndBy (parserIngValues) (string "|")
+                 t     <- sepEndBy (parserIngValues) (string "@")
+                 string "|Log:|"
+                 sepEndBy (parserEntry) (string "|")
                  return t
 
 
 
--- Parser de ingredientes
+-- Ingredients
 parserIng :: Parser Ingr
 parserIng = do n <- identifier lis
                symbol lis "-" 
                w <- parserGrams
                e <- parserExpireDate
-               return (Ingr n Nothing w (Just e) )
+               return (Ingr n {-Nothing-} w (Just e) )
 
 parserIngValues :: Parser IngValues
 parserIngValues = do n <- identifier lis
@@ -95,8 +87,8 @@ parserIngValues = do n <- identifier lis
                      v <- parserNV
                      return (IV n p v )
 
-
-parserNV :: Parser NutritionalValues -- carb prot fats, en ese orden
+-- Nutritional Values
+parserNV :: Parser NutritionalValues
 parserNV = do spaces
               c <- parserGrams
               spaces
@@ -106,7 +98,7 @@ parserNV = do spaces
               return (NV c p f) 
  
 
---Parser de fechas
+--Dates
 parserExpireDate :: Parser ExpireDate
 parserExpireDate = do symbol lis "-"
                       d <- natural lis 
@@ -119,7 +111,7 @@ parserExpireDate = do symbol lis "-"
                                        (fromIntegral d) 0 0 0) 
 
 
---Parser de recetas
+--Recipes
 parserRcp :: Parser Recipe
 parserRcp = do name <- identifier lis
                spaces
@@ -150,12 +142,12 @@ parserIngRcp = do spaces
                   n <- identifier lis
                   symbol lis "-" 
                   w <- parserGrams
-                  return (Ingr n Nothing w Nothing)
+                  return (Ingr n {-Nothing-} w Nothing)
 
 parserGrams :: Parser Grams
 parserGrams = try (float lis) <|> (do {x <- (natural lis); return (fromIntegral x)})
 
---Parser de condiciones 
+--Conditions
 
 parserCond :: Parser Cond
 parserCond =     try (do t <- identifier lis; return (With t)) 
@@ -178,7 +170,7 @@ parserConds = try (do xs <- wantedConds
 
 
 wantedConds :: Parser [Cond]
-wantedConds = do string "con"
+wantedConds = do string "+"
                  spaces
                  reservedOp lis "{"
                  xs <- manyTill (sepBy1 parserCond (string ", ")) (reservedOp lis "}")
@@ -187,14 +179,14 @@ wantedConds = do string "con"
 
 unwantedConds :: Parser [Cond]
 unwantedConds = do spaces
-                   string "sin"
+                   string "-"
                    spaces
                    reservedOp lis "{"
                    ys <- manyTill (sepBy1 ((do t <- identifier lis; return (Without t))) (string ",")) (reservedOp lis "}")
                    return (foldr (++) [] ys)
 
 
---Parser comandos
+--Commands
 parseRMComm :: Parser RMComm
 parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (Add_ing ing) })
               <|> (do{ (reserved lis) "add_rcp";  rcp <- parserRcp; return (Add_rcp rcp) })
@@ -208,8 +200,9 @@ parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (
               <|> (do{ (reserved lis) "close"; return RMClose})
               <|> (do{ (reserved lis) "display"; return Display })
               <|> (do{ (reserved lis) "add_t"; spaces; iv <- parserIngValues; return (AddTable iv)})
-              <|> (do{ (reserved lis) "rm_t"; n <- identifier lis; return (RmTable n)})
-              <|> (do{ (reserved lis) "import_table"; file <- identifier lis; string ".rcpm"; return (ImportTable (file ++ ".rcpm"))})
+              <|> (do{ (reserved lis) "rm_t"; n <- identifier lis;eof; return (RmTable n)})
+              <|> (do{ (reserved lis) "import_table"; file <- identifier lis; string ".rcpm"; return (ImportTable (file ++ ".rcpm"))}
+              <|> (do{ (reserved lis) "display_t";eof; return ShowT}))
 parseComm :: Parser Comm
 parseComm =       try (do{ (reserved lis) "load"; file <- identifier lis; string ".rcpm"; return (Load (file ++ ".rcpm")) })
               <|> (do{ (reserved lis) "quit"; return Quit })

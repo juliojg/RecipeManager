@@ -12,7 +12,7 @@ data RMComm = Add_ing Ingr
             | Rm_rcp String
             | CheckV
             | IEat String
-            | WTE (Maybe [Cond]) --what to eat
+            | WTE (Maybe [Cond])
             | RMHelp
             | RMSave
             | RMClose
@@ -20,14 +20,14 @@ data RMComm = Add_ing Ingr
             | AddTable IngValues
             | RmTable String             
             | ImportTable String
+            | ShowT
 
 data Comm = Load String         
           | Quit
           | Help
           | NewInv String
 
-data Ingr = Ingr { iname :: String, 
-                   nutritional_values :: Maybe NutritionalValues,
+data Ingr = Ingr { iname :: String,
                    quantity :: Grams, 
                    expire :: Maybe ExpireDate
                  }
@@ -50,6 +50,8 @@ data NutritionalValues = NV {carb  :: Grams,
                              prot  :: Grams,
                              fats  :: Grams}
 
+data Entry = Entry {date :: DateTime, total :: Calorie}
+
 data MacroNutrient = Carb Grams | Prot Grams | Fats Grams
 
 data Cond = LessThan MacroNutrient | MoreThan MacroNutrient | With Tag | Without Tag | LessThanC Calorie| MoreThanC Calorie
@@ -62,9 +64,7 @@ type Grams = Double
 
 type Calorie = Double
 
-type Tag = String --Desayuno / Fria / etc. 
-
-data Entry = Entry {date :: DateTime, total :: Calorie}
+type Tag = String
 
 --The state that the program will carry
 
@@ -75,13 +75,13 @@ data Env = Env {file  :: String,
                 logC   :: [Entry], 
                 flag_saved :: Int}
 
-
-
 --Eq
 
 instance Eq Recipe where
     r1 == r2 = (rname r1 == rname r2)
 
+instance Eq IngValues where
+    iv1 == iv2 = (tname iv1 == tname iv2)
 
 --Show
 
@@ -106,13 +106,15 @@ instance Show Env where
     show = showEnv
 
 showEnv :: Env -> String
-showEnv s = "Mostrando inventario: " ++ (file s) ++
+showEnv s = "\n" ++
+            "Mostrando inventario: " ++ (file s) ++
             "\n\nIngredientes:" ++
-             concat (map (('\n':) . ('\n':) . show) (inv s)) ++
+             concat (map (('\n':) . show) (inv s)) ++
             "\n\nRecetas: " ++ "\n" ++
              concat (map (('\n':) . show ) (rcps s)) ++            
             "\n\nLog: " ++ "\n" ++
-             concat (map (('\n':) . show ) (logC s))            
+             concat (map (('\n':) . show ) (logC s)) ++
+            "\n------"            
 
 instance Show Cond where
     show (With t) = "si"++show t
@@ -130,8 +132,7 @@ instance Show Ingr where
  show = showIngr 
 
 showIngr :: Ingr -> String
-showIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ "\n" ++
-             maybe "" showNV (nutritional_values i) ++ "\n" ++
+showIngr i = (iname i) ++ " - Cantidad: " ++ (show (quantity i) ++ " - " ++
              "Vencimiento: " ++ (maybe "" showExpireDate (expire i)))
 
 showSimpleIngr :: Ingr -> String
