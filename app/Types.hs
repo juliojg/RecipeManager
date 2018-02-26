@@ -3,6 +3,7 @@ module Types where
 import Data.Dates
 import Data.Char
 import Data.List
+import Data.Ord
 
 --AST
 
@@ -21,6 +22,7 @@ data RMComm = Add_ing Ingr
             | RmTable String             
             | ImportTable String
             | ShowT
+            | ShowRecipe String
 
 data Comm = Load String         
           | Quit
@@ -157,6 +159,11 @@ instance Show Entry where
 
 showEntry :: Entry -> String
 showEntry e = "El " ++ showExpireDate (date e) ++ " se ingirieron " ++ show (total e) ++ " calorias"
+
+--Ord
+
+instance Ord IngValues where
+    compare iv1 iv2 = compare (tname iv1) (tname iv2)
 
 --Aux
 

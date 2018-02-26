@@ -9,6 +9,7 @@ import Data.List
 import Data.Dates
 import Data.Ord
 import Data.Maybe
+import Data.Char
 
 import Text.ParserCombinators.Parsec 
 import Text.PrettyPrint.HughesPJ (render)
@@ -51,7 +52,7 @@ importRM path = do s <- get
                    case parse parserTable "" r of
                                   Left err -> throw CargaFallida
                                   Right ts  -> do let nt = filter (\t-> not $ elem t (table s)) ts
-                                                  put (Env (file s) (inv s) (rcps s) ((table s) ++ nt) (logC s) 0)
+                                                  put (Env (file s) (inv s) (rcps s) (sort ((table s) ++ nt)) (logC s) 0)
                                                   liftIO $ putStrLn ("Importada tabla de: " ++ path)
              
 --Adds an ingredient to the inventory, grouping those with same name and ordering them by expire date.
@@ -136,6 +137,14 @@ rmRcp name = do s <- get
                             liftIO $ putStrLn ("Receta eliminada: " ++ name)
 
 
+--Show a recipe
+
+showR :: String -> StateError ()
+showR name = do s <- get
+                let res = find (\r -> rname r == name) (rcps s)
+                maybe (throw RecetaInexistente) (liftIO . putStrLn . show) res
+
+
 
 --Check the expire dates of the ingredients.
 checkE :: StateError ()
@@ -151,9 +160,10 @@ checkE = do s <- get
 --Adds an ingredient to the value table.
 addTable :: IngValues -> StateError ()
 addTable iv = do s <- get
+                 let nt = (sort (iv:(table s)))
                  if elem iv (table s) 
                  then throw IngrExistenteT
-                 else put (Env (file s) (inv s) (rcps s) (iv:(table s)) (logC s) 0)                   
+                 else put (Env (file s) (inv s) (rcps s) nt (logC s) 0)                   
 
 
 --Removes an ingredient from the value table.
@@ -198,7 +208,6 @@ getRcpNV r = do s <- get
                 return (foldr (sumNV) accNV aux)
 
 
-
 --Creates a simple dictionary with the recipes an their respective nutritional values.
 getRcpsNV :: [Recipe] -> StateError [(Recipe,NutritionalValues)]
 getRcpsNV [] = return []
@@ -213,10 +222,6 @@ accNV = NV 0 0 0
 
 sumNV :: NutritionalValues -> NutritionalValues -> NutritionalValues
 sumNV n1 n2 = (NV (carb n1 + carb n2) (prot n1 + prot n2) (fats n1 + fats n2))
-
-diffNV :: NutritionalValues -> NutritionalValues -> NutritionalValues
-diffNV n1 n2 = (NV (carb n1 - carb n2) (prot n1 - prot n2) (fats n1 - fats n2))
-
 
 
 --List the preparables recipes based on the disponible ingredients.

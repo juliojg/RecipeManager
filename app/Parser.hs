@@ -23,7 +23,7 @@ lis = makeTokenParser (emptyDef   { commentStart    = "/*"
                                   , reservedNames   = [ "add_ing", "add_rcp", "rm_ing", "rm_rcp",
                                                         "check", "i_eat", "need_food", 
                                                         "new_inv", "save", "load", "close", "help", "display", "quit",
-                                                        "add_t", "rm_t"]
+                                                        "add_t", "rm_t", "display_t", "import_table", "showr"]
                                   })
 
 --Saved files
@@ -201,8 +201,9 @@ parseRMComm =     try ( do{ (reserved lis) "add_ing"; ing <- parserIng; return (
               <|> (do{ (reserved lis) "display"; return Display })
               <|> (do{ (reserved lis) "add_t"; spaces; iv <- parserIngValues; return (AddTable iv)})
               <|> (do{ (reserved lis) "rm_t"; n <- identifier lis;eof; return (RmTable n)})
-              <|> (do{ (reserved lis) "import_table"; file <- identifier lis; string ".rcpm"; return (ImportTable (file ++ ".rcpm"))}
-              <|> (do{ (reserved lis) "display_t";eof; return ShowT}))
+              <|> (do{ (reserved lis) "import_t"; file <- identifier lis; string ".rcpm"; return (ImportTable (file ++ ".rcpm"))}
+              <|> (do{ (reserved lis) "display_t";eof; return ShowT})
+              <|> (do{ (reserved lis) "showr";r <- identifier lis;eof; return (ShowRecipe r)}))
 parseComm :: Parser Comm
 parseComm =       try (do{ (reserved lis) "load"; file <- identifier lis; string ".rcpm"; return (Load (file ++ ".rcpm")) })
               <|> (do{ (reserved lis) "quit"; return Quit })

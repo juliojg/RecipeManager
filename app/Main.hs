@@ -116,6 +116,8 @@ handleRMComm comm =
                                liftIO $ putStrLn "Tabla de valores:"          
                                liftIO $ (mapM_ (putStrLn . show) (table s))
                                
+        ShowRecipe name  -> catchError (showR name) (\er -> liftIO $ putStrLn ("La siguiente receta no esta en la lista: " ++ name))
+
 showHelp :: IO ()
 showHelp = do setCursorPosition 0 0
               clearScreen
@@ -144,7 +146,7 @@ showRMHelp = do liftIO $ setCursorPosition 0 0
                 liftIO $ putStrLn "close                                       : Cerrar inventario"                 
                 liftIO $ putStrLn "help                                        : Mostrar ayuda" 
                 liftIO $ putStrLn "display_t                                   : Muestra la tabla de valores nutricionales"
-
+                liftIO $ putStrLn "import_t [nombre_de_archivo].rcpm           : Importa la tabla de valores de otro inventario"
 wrongComm :: IO ()
 wrongComm = putStrLn "Comando mal ingresado (\"help\" muestra los disponibles)"
 
